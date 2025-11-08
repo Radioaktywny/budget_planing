@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Note: SQLite doesn't support enums, so we use String with validation in the application layer
+// Valid AccountType values: CHECKING, SAVINGS, CREDIT_CARD, CASH
+// Valid TransactionType values: INCOME, EXPENSE, TRANSFER
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  name      String?
+  createdAt DateTime @default(now())
+  
+  accounts     Account[]
+  transactions Transaction[]
+  categories   Category[]
+  tags         Tag[]
+}
+
+model Account {
+  id        String      @id @default(uuid())
+  name      String
+  type      String      // AccountType: CHECKING, SAVINGS, CREDIT_CARD, CASH
+  balance   Float       @default(0)
+  userId    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  user          User          @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
+  transfersFrom Transfer[]    @relation("TransferFrom")
+  transfersTo   Transfer[]    @relation("TransferTo")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  date        DateTime
+  amount      Float
+  type        String          // TransactionType: INCOME, EXPENSE, TRANSFER
+  description String
+  notes       String?
+  accountId   String
+  categoryId  String?
+  userId      String
+  documentId  String?
+  isParent    Boolean         @default(false)
+  parentId    String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  account      Account          @relation(fields: [accountId], references: [id])
+  category     Category?        @relation(fields: [categoryId], references: [id])
+  user         User             @relation(fields: [userId], references: [id])
+  document     Document?        @relation(fields: [documentId], references: [id])
+  tags         TransactionTag[]
+  transfer     Transfer?
+  parent       Transaction?     @relation("TransactionSplit", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  splitItems   Transaction[]    @relation("TransactionSplit")
+}
+
+model Transfer {
+  id            String   @id @default(uuid())
+  transactionId String   @unique
+  fromAccountId String
+  toAccountId   String
+  createdAt     DateTime @default(now())
+  
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  fromAccount Account     @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  toAccount   Account     @relation("TransferTo", fields: [toAccountId], references: [id])
+}
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String
+  parentId String?
+  userId   String
+  color    String?
+  
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children     Category[]    @relation("CategoryHierarchy")
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+}
+
+model Tag {
+  id     String @id @default(uuid())
+  name   String
+  userId String
+  
+  user         User             @relation(fields: [userId], references: [id])
+  transactions TransactionTag[]
+}
+
+model TransactionTag {
+  transactionId String
+  tagId         String
+  
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  tag         Tag         @relation(fields: [tagId], references: [id])
+  
+  @@id([transactionId, tagId])
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String
+  uploadedAt   DateTime @default(now())
+  
+  transactions Transaction[]
+}
+
+model CategorizationRule {
+  id          String   @id @default(uuid())
+  pattern     String
+  categoryId  String
+  confidence  Float
+  learnedFrom Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
