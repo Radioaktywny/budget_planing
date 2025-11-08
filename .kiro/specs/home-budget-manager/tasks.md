@@ -139,34 +139,52 @@
     - Add transfer display logic to transaction list endpoint
     - _Requirements: 3.1, 3.3, 3.4_
   
-  - [ ]* 5.3 Write unit tests for transfer service
+  - [x] 5.3 Write unit tests for transfer service
+
+
+
+
+
+
     - Test transfer creation between accounts
     - Test balance updates for both accounts
     - Test validation for invalid accounts
     - Test transfer deletion and balance rollback
     - _Requirements: 3.1, 3.2, 3.5_
   
+
   - [ ]* 5.4 Write integration tests for transfer API
     - Test transfer endpoint
     - Test transfer display in transaction list
     - Test error responses
     - _Requirements: 3.1, 3.3, 3.4_
 
-- [ ] 6. Implement split transaction support
-  - [ ] 6.1 Create split transaction service logic
+- [x] 6. Implement split transaction support
+
+
+
+
+  - [x] 6.1 Create split transaction service logic
+
+
     - Write function to create parent transaction with child items
     - Implement validation that child amounts sum to parent amount
     - Add logic to handle parent-child relationships
     - Implement cascade delete for parent transactions
     - _Requirements: 18.1, 18.2_
   
-  - [ ] 6.2 Create split transaction API endpoints
+  - [x] 6.2 Create split transaction API endpoints
+
+
     - Implement POST /api/transactions/split endpoint
     - Implement GET /api/transactions/:id/items endpoint
     - Update transaction list endpoint to include split items
     - _Requirements: 18.1, 18.3, 18.4_
   
-  - [ ]* 6.3 Write unit tests for split transaction service
+  - [x] 6.3 Write unit tests for split transaction service
+
+
+
     - Test split transaction creation
     - Test validation of child amounts sum
     - Test parent-child relationships
@@ -180,22 +198,33 @@
     - Test error responses
     - _Requirements: 18.1, 18.3, 18.4_
 
-- [ ] 7. Implement category management
-  - [ ] 7.1 Create category service layer
+- [x] 7. Implement category management
+
+
+
+
+  - [x] 7.1 Create category service layer
+
+
     - Write functions for creating, updating, deleting categories
     - Implement hierarchical category logic (parent-child)
     - Add validation for category operations
     - Implement category reassignment logic for deletion
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   
-  - [ ] 7.2 Create category routes and controllers
+  - [x] 7.2 Create category routes and controllers
+
+
     - Implement GET /api/categories endpoint
     - Implement POST /api/categories endpoint
     - Implement PUT /api/categories/:id endpoint
     - Implement DELETE /api/categories/:id endpoint with reassignment
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   
-  - [ ]* 7.3 Write unit tests for category service
+  - [x] 7.3 Write unit tests for category service
+
+
+
     - Test category creation and hierarchy
     - Test category update operations
     - Test category deletion with reassignment
@@ -314,7 +343,8 @@
     - Return parsed data for review interface
     - _Requirements: 5.2, 5.3, 6.2, 7.1_
   
-  - [ ]* 11.3 Write unit tests for parsing service
+  - [ ] 11.3 Write unit tests for parsing service
+
     - Test AI service integration
     - Test error handling and fallback logic
     - Test timeout handling

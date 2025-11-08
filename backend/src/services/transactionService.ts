@@ -41,9 +41,30 @@ export const CreateTransferSchema = z.object({
   userId: z.string().uuid('Invalid user ID'),
 });
 
+export const SplitItemSchema = z.object({
+  amount: z.number().positive('Item amount must be greater than 0'),
+  description: z.string().min(1, 'Item description is required'),
+  categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
+  notes: z.string().optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
+});
+
+export const CreateSplitTransactionSchema = z.object({
+  date: z.string().datetime().or(z.date()),
+  amount: z.number().positive('Amount must be greater than 0'),
+  type: TransactionTypeSchema,
+  description: z.string().min(1, 'Description is required'),
+  notes: z.string().optional(),
+  accountId: z.string().uuid('Invalid account ID'),
+  userId: z.string().uuid('Invalid user ID'),
+  items: z.array(SplitItemSchema).min(1, 'At least one split item is required'),
+});
+
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
 export type CreateTransferInput = z.infer<typeof CreateTransferSchema>;
+export type SplitItem = z.infer<typeof SplitItemSchema>;
+export type CreateSplitTransactionInput = z.infer<typeof CreateSplitTransactionSchema>;
 
 export interface Transaction {
   id: string;
@@ -82,6 +103,7 @@ export interface TransactionWithRelations extends Transaction {
 
 /**
  * Get all transactions for a user with optional filtering
+ * Returns both regular transactions and parent split transactions (with their child items)
  */
 export async function getAllTransactions(
   userId: string,
@@ -96,7 +118,7 @@ export async function getAllTransactions(
 ): Promise<TransactionWithRelations[]> {
   const where: any = {
     userId,
-    isParent: false, // Exclude parent transactions from split transactions
+    parentId: null, // Only get top-level transactions (regular transactions and parent split transactions)
   };
 
   if (filters?.accountId) {
@@ -128,7 +150,7 @@ export async function getAllTransactions(
     };
   }
 
-  return await prisma.transaction.findMany({
+  const transactions = await prisma.transaction.findMany({
     where,
     include: {
       account: {
@@ -170,9 +192,39 @@ export async function getAllTransactions(
           },
         },
       },
+      splitItems: {
+        include: {
+          account: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
     },
     orderBy: { date: 'desc' },
   });
+
+  return transactions;
 }
 
 /**
@@ -498,6 +550,7 @@ export async function updateTransaction(
 
 /**
  * Delete a transaction
+ * If the transaction is a parent, all child transactions are also deleted (cascade)
  */
 export async function deleteTransaction(transactionId: string, userId: string): Promise<void> {
   // Get existing transaction
@@ -506,23 +559,87 @@ export async function deleteTransaction(transactionId: string, userId: string): 
     throw new Error('Transaction not found');
   }
 
-  // Delete associated tags
+  // If this is a parent transaction, delete all child transactions first
+  if (transaction.isParent) {
+    const childTransactions = await prisma.transaction.findMany({
+      where: {
+        parentId: transactionId,
+        userId,
+      },
+    });
+
+    // Delete tags for all child transactions
+    for (const child of childTransactions) {
+      await prisma.transactionTag.deleteMany({
+        where: { transactionId: child.id },
+      });
+    }
+
+    // Delete all child transactions
+    await prisma.transaction.deleteMany({
+      where: {
+        parentId: transactionId,
+        userId,
+      },
+    });
+  }
+
+  // Delete associated tags for the main transaction
   await prisma.transactionTag.deleteMany({
     where: { transactionId },
   });
 
-  // Delete transaction
-  await prisma.transaction.delete({
-    where: { id: transactionId },
-  });
+  // Handle transfer transactions specially
+  if (transaction.type === TransactionType.TRANSFER) {
+    // Check if this transaction is the "from" side of a transfer
+    const transfer = await prisma.transfer.findUnique({
+      where: { transactionId },
+    });
 
-  // Update account balance
-  await updateAccountBalanceAfterTransaction(
-    transaction.accountId,
-    transaction.type,
-    transaction.amount,
-    'delete'
-  );
+    // Delete transfer record first
+    await prisma.transfer.deleteMany({
+      where: { transactionId },
+    });
+
+    // Delete transaction
+    await prisma.transaction.delete({
+      where: { id: transactionId },
+    });
+
+    // Update balance based on whether this is from or to account
+    const account = await prisma.account.findUnique({
+      where: { id: transaction.accountId },
+    });
+    
+    if (account) {
+      if (transfer) {
+        // This is the "from" transaction, so we need to add the amount back
+        await accountService.updateAccountBalance(
+          transaction.accountId,
+          account.balance + transaction.amount
+        );
+      } else {
+        // This is the "to" transaction, so we need to subtract the amount
+        await accountService.updateAccountBalance(
+          transaction.accountId,
+          account.balance - transaction.amount
+        );
+      }
+    }
+  } else {
+    // Delete transaction
+    await prisma.transaction.delete({
+      where: { id: transactionId },
+    });
+
+    // For non-transfer transactions, use the standard balance update
+    await updateAccountBalanceAfterTransaction(
+      transaction.accountId,
+      transaction.type,
+      transaction.amount,
+      'delete'
+    );
+  }
 }
 
 /**
@@ -664,4 +781,196 @@ export async function createTransfer(
     fromTransaction: fromTransactionWithRelations,
     toTransaction: toTransactionWithRelations,
   };
+}
+
+/**
+ * Create a split transaction with multiple child items
+ * This creates a parent transaction and multiple child transactions with different categories
+ */
+export async function createSplitTransaction(
+  data: CreateSplitTransactionInput
+): Promise<{ parent: TransactionWithRelations; items: TransactionWithRelations[] }> {
+  // Validate input
+  const validated = CreateSplitTransactionSchema.parse(data);
+
+  // Validate that child amounts sum to parent amount
+  const itemsTotal = validated.items.reduce((sum, item) => sum + item.amount, 0);
+  if (Math.abs(itemsTotal - validated.amount) > 0.01) {
+    throw new Error(
+      `Sum of item amounts (${itemsTotal}) must equal parent amount (${validated.amount})`
+    );
+  }
+
+  // Verify account exists and belongs to user
+  const account = await accountService.getAccountById(validated.accountId, validated.userId);
+  if (!account) {
+    throw new Error('Account not found');
+  }
+
+  // Verify all categories exist and belong to user
+  for (const item of validated.items) {
+    if (item.categoryId) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: item.categoryId,
+          userId: validated.userId,
+        },
+      });
+      if (!category) {
+        throw new Error(`Category not found: ${item.categoryId}`);
+      }
+    }
+  }
+
+  // Convert date to Date object if it's a string
+  const transactionDate = typeof validated.date === 'string' 
+    ? new Date(validated.date) 
+    : validated.date;
+
+  // Create parent and child transactions in a transaction
+  const result = await prisma.$transaction(async (tx) => {
+    // Create parent transaction
+    const parent = await tx.transaction.create({
+      data: {
+        date: transactionDate,
+        amount: validated.amount,
+        type: validated.type,
+        description: validated.description,
+        notes: validated.notes,
+        accountId: validated.accountId,
+        userId: validated.userId,
+        isParent: true,
+        categoryId: null, // Parent has no category
+      },
+    });
+
+    // Create child transactions
+    const childTransactions = [];
+    for (const item of validated.items) {
+      const child = await tx.transaction.create({
+        data: {
+          date: transactionDate,
+          amount: item.amount,
+          type: validated.type,
+          description: item.description,
+          notes: item.notes,
+          accountId: validated.accountId,
+          categoryId: item.categoryId,
+          userId: validated.userId,
+          isParent: false,
+          parentId: parent.id,
+        },
+      });
+
+      // Handle tags for child item if provided
+      if (item.tagIds && item.tagIds.length > 0) {
+        await tx.transactionTag.createMany({
+          data: item.tagIds.map(tagId => ({
+            transactionId: child.id,
+            tagId,
+          })),
+        });
+      }
+
+      childTransactions.push(child);
+    }
+
+    return { parent, childTransactions };
+  });
+
+  // Update account balance based on parent transaction
+  await updateAccountBalanceAfterTransaction(
+    validated.accountId,
+    validated.type,
+    validated.amount,
+    'create'
+  );
+
+  // Fetch complete transactions with relations
+  const parentWithRelations = await getTransactionById(result.parent.id, validated.userId);
+  if (!parentWithRelations) {
+    throw new Error('Failed to fetch created parent transaction');
+  }
+
+  const itemsWithRelations = await Promise.all(
+    result.childTransactions.map(child => getTransactionById(child.id, validated.userId))
+  );
+
+  // Filter out any null values (shouldn't happen, but TypeScript safety)
+  const validItems = itemsWithRelations.filter(
+    (item): item is TransactionWithRelations => item !== null
+  );
+
+  return {
+    parent: parentWithRelations,
+    items: validItems,
+  };
+}
+
+/**
+ * Get all child items for a parent split transaction
+ */
+export async function getSplitTransactionItems(
+  parentId: string,
+  userId: string
+): Promise<TransactionWithRelations[]> {
+  // Verify parent transaction exists and belongs to user
+  const parent = await getTransactionById(parentId, userId);
+  if (!parent) {
+    throw new Error('Parent transaction not found');
+  }
+
+  if (!parent.isParent) {
+    throw new Error('Transaction is not a parent transaction');
+  }
+
+  // Get all child transactions
+  return await prisma.transaction.findMany({
+    where: {
+      parentId,
+      userId,
+    },
+    include: {
+      account: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+      },
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      transfer: {
+        include: {
+          fromAccount: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          toAccount: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
 }

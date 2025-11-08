@@ -541,5 +541,299 @@ describe('Transaction Service', () => {
 
       await expect(transactionService.createTransfer(transferData)).rejects.toThrow();
     });
+
+    it('should rollback balances when transfer transaction is deleted', async () => {
+      const transferData = {
+        date: new Date('2024-01-15'),
+        amount: 250,
+        description: 'Transfer to delete',
+        fromAccountId,
+        toAccountId,
+        userId: testUserId,
+      };
+
+      const result = await transactionService.createTransfer(transferData);
+
+      // Verify balances after transfer
+      let fromAccount = await accountService.getAccountById(fromAccountId, testUserId);
+      let toAccount = await accountService.getAccountById(toAccountId, testUserId);
+      expect(fromAccount?.balance).toBe(750); // 1000 - 250
+      expect(toAccount?.balance).toBe(250); // 0 + 250
+
+      // Delete the from transaction
+      await transactionService.deleteTransaction(result.fromTransaction.id, testUserId);
+
+      // Verify balance is rolled back for from account
+      fromAccount = await accountService.getAccountById(fromAccountId, testUserId);
+      expect(fromAccount?.balance).toBe(1000); // Restored to original
+
+      // Delete the to transaction
+      await transactionService.deleteTransaction(result.toTransaction.id, testUserId);
+
+      // Verify balance is rolled back for to account
+      toAccount = await accountService.getAccountById(toAccountId, testUserId);
+      expect(toAccount?.balance).toBe(0); // Restored to original
+    });
+  });
+
+  describe('createSplitTransaction', () => {
+    it('should create split transaction with multiple items', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 85.50,
+        type: 'EXPENSE' as const,
+        description: 'Walmart Receipt',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 35.00,
+            description: 'Groceries',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 40.00,
+            description: 'USB Cable',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 10.50,
+            description: 'Shampoo',
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      const result = await transactionService.createSplitTransaction(splitData);
+
+      expect(result.parent).toBeDefined();
+      expect(result.parent.isParent).toBe(true);
+      expect(result.parent.amount).toBe(85.50);
+      expect(result.parent.categoryId).toBeNull();
+      expect(result.items).toHaveLength(3);
+      expect(result.items[0].amount).toBe(35.00);
+      expect(result.items[1].amount).toBe(40.00);
+      expect(result.items[2].amount).toBe(10.50);
+      expect(result.items[0].parentId).toBe(result.parent.id);
+
+      const account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(-85.50);
+    });
+
+    it('should throw error when child amounts do not sum to parent amount', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 100.00,
+        type: 'EXPENSE' as const,
+        description: 'Invalid Split',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 35.00,
+            description: 'Item 1',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 40.00,
+            description: 'Item 2',
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      await expect(transactionService.createSplitTransaction(splitData)).rejects.toThrow(
+        'Sum of item amounts'
+      );
+    });
+
+    it('should create split transaction with different categories for each item', async () => {
+      const category1 = await prisma.category.create({
+        data: { name: 'Food', userId: testUserId },
+      });
+      const category2 = await prisma.category.create({
+        data: { name: 'Electronics', userId: testUserId },
+      });
+
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 75.00,
+        type: 'EXPENSE' as const,
+        description: 'Mixed Purchase',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 35.00,
+            description: 'Groceries',
+            categoryId: category1.id,
+          },
+          {
+            amount: 40.00,
+            description: 'USB Cable',
+            categoryId: category2.id,
+          },
+        ],
+      };
+
+      const result = await transactionService.createSplitTransaction(splitData);
+
+      expect(result.items[0].categoryId).toBe(category1.id);
+      expect(result.items[1].categoryId).toBe(category2.id);
+    });
+
+    it('should throw error when category does not exist', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 50.00,
+        type: 'EXPENSE' as const,
+        description: 'Test',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 50.00,
+            description: 'Item',
+            categoryId: '00000000-0000-0000-0000-000000000000',
+          },
+        ],
+      };
+
+      await expect(transactionService.createSplitTransaction(splitData)).rejects.toThrow(
+        'Category not found'
+      );
+    });
+  });
+
+  describe('getSplitTransactionItems', () => {
+    it('should get all child items for a parent transaction', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 60.00,
+        type: 'EXPENSE' as const,
+        description: 'Split Purchase',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 30.00,
+            description: 'Item 1',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 30.00,
+            description: 'Item 2',
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      const result = await transactionService.createSplitTransaction(splitData);
+      const items = await transactionService.getSplitTransactionItems(
+        result.parent.id,
+        testUserId
+      );
+
+      expect(items).toHaveLength(2);
+      expect(items[0].amount).toBe(30.00);
+      expect(items[1].amount).toBe(30.00);
+    });
+
+    it('should throw error when parent transaction does not exist', async () => {
+      await expect(
+        transactionService.getSplitTransactionItems('non-existent-id', testUserId)
+      ).rejects.toThrow('Parent transaction not found');
+    });
+
+    it('should throw error when transaction is not a parent', async () => {
+      const transaction = await transactionService.createTransaction({
+        date: new Date('2024-01-15'),
+        amount: 100,
+        type: 'EXPENSE',
+        description: 'Regular Transaction',
+        accountId: testAccountId,
+        userId: testUserId,
+      });
+
+      await expect(
+        transactionService.getSplitTransactionItems(transaction.id, testUserId)
+      ).rejects.toThrow('not a parent transaction');
+    });
+  });
+
+  describe('deleteTransaction with split transactions', () => {
+    it('should cascade delete all child items when parent is deleted', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 90.00,
+        type: 'EXPENSE' as const,
+        description: 'Split to Delete',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 45.00,
+            description: 'Item 1',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 45.00,
+            description: 'Item 2',
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      const result = await transactionService.createSplitTransaction(splitData);
+
+      let account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(-90.00);
+
+      await transactionService.deleteTransaction(result.parent.id, testUserId);
+
+      account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(0);
+
+      const parent = await transactionService.getTransactionById(result.parent.id, testUserId);
+      expect(parent).toBeNull();
+
+      const items = await prisma.transaction.findMany({
+        where: { parentId: result.parent.id },
+      });
+      expect(items).toHaveLength(0);
+    });
+
+    it('should update balance correctly when deleting split transaction', async () => {
+      const splitData = {
+        date: new Date('2024-01-15'),
+        amount: 100.00,
+        type: 'EXPENSE' as const,
+        description: 'Split Transaction',
+        accountId: testAccountId,
+        userId: testUserId,
+        items: [
+          {
+            amount: 60.00,
+            description: 'Item 1',
+            categoryId: testCategoryId,
+          },
+          {
+            amount: 40.00,
+            description: 'Item 2',
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      const result = await transactionService.createSplitTransaction(splitData);
+
+      let account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(-100.00);
+
+      await transactionService.deleteTransaction(result.parent.id, testUserId);
+
+      account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(0);
+    });
   });
 });

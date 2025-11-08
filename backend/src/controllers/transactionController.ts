@@ -337,3 +337,127 @@ export async function createTransfer(req: Request, res: Response): Promise<void>
     });
   }
 }
+
+/**
+ * POST /api/transactions/split
+ * Create a split transaction with multiple child items
+ */
+export async function createSplitTransaction(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = await getUserId(req);
+    
+    const splitData = {
+      ...req.body,
+      userId,
+    };
+
+    const result = await transactionService.createSplitTransaction(splitData);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Error creating split transaction:', error);
+    
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid split transaction data',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+      });
+      return;
+    }
+
+    if (error instanceof Error) {
+      if (error.message.includes('not found')) {
+        res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      if (error.message.includes('must equal')) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      res.status(400).json({
+        error: {
+          code: 'BAD_REQUEST',
+          message: error.message,
+        },
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create split transaction',
+      },
+    });
+  }
+}
+
+/**
+ * GET /api/transactions/:id/items
+ * Get all child items for a split transaction
+ */
+export async function getSplitTransactionItems(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = await getUserId(req);
+    const { id } = req.params;
+
+    const items = await transactionService.getSplitTransactionItems(id, userId);
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching split transaction items:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('not found')) {
+        res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      if (error.message.includes('not a parent')) {
+        res.status(400).json({
+          error: {
+            code: 'BAD_REQUEST',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      res.status(400).json({
+        error: {
+          code: 'BAD_REQUEST',
+          message: error.message,
+        },
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch split transaction items',
+      },
+    });
+  }
+}

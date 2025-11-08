@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import accountRoutes from './routes/accountRoutes';
 import transactionRoutes from './routes/transactionRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +34,9 @@ app.use('/api/accounts', accountRoutes);
 
 // Transaction routes
 app.use('/api/transactions', transactionRoutes);
+
+// Category routes
+app.use('/api/categories', categoryRoutes);
 
 // Start server
 app.listen(port, () => {
