@@ -72,21 +72,39 @@
     - Test validation errors
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 4. Implement basic transaction management
-  - [ ] 4.1 Create transaction service layer
+- [x] 4. Implement basic transaction management
+
+
+
+
+  - [x] 4.1 Create transaction service layer
+
+
     - Write functions for creating, updating, deleting transactions
     - Implement balance update logic when transactions are created/modified
     - Add validation for transaction data
     - _Requirements: 2.1, 2.4, 2.5, 4.1, 4.3_
   
-  - [ ] 4.2 Create transaction routes and controllers
+  - [x] 4.2 Create transaction routes and controllers
+
+
     - Implement POST /api/transactions endpoint for creating transactions
     - Implement PUT /api/transactions/:id endpoint for editing
     - Implement DELETE /api/transactions/:id endpoint
     - Implement GET /api/transactions endpoint with basic filtering
     - _Requirements: 2.1, 2.2, 2.5, 4.1, 4.2_
   
-  - [ ]* 4.3 Write unit tests for transaction service
+  - [x] 4.3 Write unit tests for transaction service
+
+
+
+
+
+
+
+
+
+
     - Test transaction creation and balance updates
     - Test transaction update and deletion
     - Test validation logic
@@ -100,14 +118,22 @@
     - Test balance updates after transaction operations
     - _Requirements: 2.1, 2.2, 2.5, 4.1, 4.2_
 
-- [ ] 5. Implement transfer functionality
-  - [ ] 5.1 Create transfer service logic
+- [x] 5. Implement transfer functionality
+
+
+
+
+  - [x] 5.1 Create transfer service logic
+
+
     - Write function to create transfer between two accounts
     - Implement dual transaction creation (debit and credit)
     - Add validation to ensure both accounts exist and belong to user
     - Implement balance updates for both accounts
     - _Requirements: 3.1, 3.2, 3.5_
   
+
+
   - [ ] 5.2 Create transfer API endpoint
     - Implement POST /api/transactions/transfer endpoint
     - Add transfer display logic to transaction list endpoint
@@ -293,7 +319,7 @@
     - Test error handling and fallback logic
     - Test timeout handling
     - Test pending transaction storage
-    - _Requirements: 5.2, 5.3, 5.5, 6.2, 6.4_
+    - _Requirements: 5.2, 5.3, 5.5, 6.2, 6.4_p
   
   - [ ]* 11.4 Write integration tests for parsing API
     - Test document parsing endpoint

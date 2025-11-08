@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import accountRoutes from './routes/accountRoutes';
+import transactionRoutes from './routes/transactionRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,9 @@ app.get('/api', (_req: Request, res: Response) => {
 
 // Account routes
 app.use('/api/accounts', accountRoutes);
+
+// Transaction routes
+app.use('/api/transactions', transactionRoutes);
 
 // Start server
 app.listen(port, () => {
