@@ -18,6 +18,7 @@ import { transactionService } from '../services/transactionService';
 import { reportService } from '../services/reportService';
 import { Account, Transaction, ReportSummary, CategoryBreakdown } from '../types';
 import PieChart from '../components/PieChart';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -70,20 +71,7 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
+  // Using formatCurrency from utils/formatters.ts (PLN currency)
 
   const getTransactionTypeColor = (type: string) => {
     switch (type) {

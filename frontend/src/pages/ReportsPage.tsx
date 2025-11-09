@@ -4,6 +4,7 @@ import { ComprehensiveReport } from '../types';
 import PieChart from '../components/PieChart';
 import BarChart from '../components/BarChart';
 import LineChart from '../components/LineChart';
+import { formatCurrency } from '../utils/formatters';
 
 const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Category, Account, TransactionType } from '../types';
 import { categoryService } from '../services/categoryService';
 import { accountService } from '../services/accountService';
+import { formatCurrency } from '../utils/formatters';
 
 export interface ImportReviewTransaction {
   id: string; // Temporary ID for tracking

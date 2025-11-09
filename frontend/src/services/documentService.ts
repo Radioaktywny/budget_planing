@@ -7,20 +7,26 @@ export const documentService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await apiClient.post<Document>('/documents/upload', formData, {
+    const response = await apiClient.post<{ message: string; document: Document }>('/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.document;
   },
 
   // Parse document
   parse: async (documentId: string): Promise<ParsedTransaction[]> => {
-    const response = await apiClient.post<ParsedTransaction[]>('/documents/parse', {
+    const response = await apiClient.post<{ 
+      success: boolean; 
+      documentId: string; 
+      documentType: string;
+      transactions: ParsedTransaction[];
+      message: string;
+    }>('/documents/parse', {
       documentId,
     });
-    return response.data;
+    return response.data.transactions;
   },
 
   // Get document by ID

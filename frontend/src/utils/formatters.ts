@@ -1,8 +1,9 @@
 // Format currency
+// TODO: Add multi-currency support in the future
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('pl-PL', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'PLN',
   }).format(amount);
 };
 
