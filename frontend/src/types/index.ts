@@ -190,6 +190,27 @@ export interface NetBalancePoint {
   expenses: number;
 }
 
+export interface MonthlySummary {
+  month: string;
+  income: number;
+  expenses: number;
+  netBalance: number;
+  transactionCount: number;
+}
+
+export interface ComprehensiveReport {
+  summary: MonthlySummary[];
+  expenseBreakdown: CategoryBreakdown[];
+  incomeBreakdown: CategoryBreakdown[];
+  netBalanceTrend: NetBalancePoint[];
+  totals: {
+    totalIncome: number;
+    totalExpenses: number;
+    totalNetBalance: number;
+    totalTransactions: number;
+  };
+}
+
 export interface ImportTransaction {
   date: string;
   amount: number;

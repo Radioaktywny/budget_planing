@@ -1,5 +1,11 @@
 import apiClient from './api';
-import { ReportSummary, CategoryBreakdown, NetBalancePoint } from '../types';
+import { 
+  ReportSummary, 
+  CategoryBreakdown, 
+  NetBalancePoint, 
+  MonthlySummary,
+  ComprehensiveReport 
+} from '../types';
 
 export const reportService = {
   // Get summary report
@@ -11,9 +17,13 @@ export const reportService = {
   },
 
   // Get category breakdown
-  getCategoryBreakdown: async (startDate: string, endDate: string): Promise<CategoryBreakdown[]> => {
+  getCategoryBreakdown: async (
+    startDate: string, 
+    endDate: string,
+    type?: 'INCOME' | 'EXPENSE'
+  ): Promise<CategoryBreakdown[]> => {
     const response = await apiClient.get<CategoryBreakdown[]>('/reports/category-breakdown', {
-      params: { startDate, endDate },
+      params: { startDate, endDate, type },
     });
     return response.data;
   },
@@ -21,6 +31,14 @@ export const reportService = {
   // Get net balance over time
   getNetBalance: async (startDate: string, endDate: string): Promise<NetBalancePoint[]> => {
     const response = await apiClient.get<NetBalancePoint[]>('/reports/net-balance', {
+      params: { startDate, endDate },
+    });
+    return response.data;
+  },
+
+  // Get comprehensive report
+  getComprehensive: async (startDate: string, endDate: string): Promise<ComprehensiveReport> => {
+    const response = await apiClient.get<ComprehensiveReport>('/reports/comprehensive', {
       params: { startDate, endDate },
     });
     return response.data;

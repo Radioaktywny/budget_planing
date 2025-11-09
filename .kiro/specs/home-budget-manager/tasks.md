@@ -751,7 +751,12 @@ all transaction data
   - Set up React Router with route definitions
   - _Requirements: 17.1, 17.5_
 
-- [ ] 20. Implement frontend API service layer
+- [x] 20. Implement frontend API service layer
+
+
+
+
+
   - Create TypeScript interfaces for all data models
   - Write API service functions for accounts (CRUD operations)
   - Write API service functions for transactions (CRUD, filters)
@@ -761,22 +766,36 @@ all transaction data
   - Add error handling and response typing
   - _Requirements: All API-related requirements_
 
-- [ ] 21. Implement account management UI
-  - [ ] 21.1 Create AccountsPage component
+- [x] 21. Implement account management UI
+
+
+
+
+  - [x] 21.1 Create AccountsPage component
+
+
     - Display list of accounts with balances
     - Add account creation form
     - Implement account editing modal
     - Add account deletion with confirmation
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
   
-  - [ ] 21.2 Create AccountSelector component
+  - [x] 21.2 Create AccountSelector component
+
+
     - Build dropdown component for account selection
     - Add account type icons
     - Use in transaction forms
     - _Requirements: 2.1_
 
-- [ ] 22. Implement transaction form components
-  - [ ] 22.1 Create TransactionForm component
+- [x] 22. Implement transaction form components
+
+
+
+
+  - [x] 22.1 Create TransactionForm component
+
+
     - Build form with date, amount, type, description, account, category fields
     - Add form validation
     - Implement category selector integration
@@ -784,21 +803,32 @@ all transaction data
     - Support both create and edit modes
     - _Requirements: 2.1, 2.2, 2.4, 4.1_
   
-  - [ ] 22.2 Create split transaction form
+  - [x] 22.2 Create split transaction form
+
+
     - Add UI to create parent transaction with child items
     - Implement dynamic item addition/removal
     - Add validation for sum of items equals parent
     - Allow different categories for each item
     - _Requirements: 18.1, 18.2, 18.3_
   
-  - [ ] 22.3 Create transfer form
+  - [x] 22.3 Create transfer form
+
+
     - Build form for transfer between accounts
     - Add from/to account selectors
     - Implement amount and date fields
     - _Requirements: 3.1, 3.2_
 
-- [ ] 23. Implement transaction list and filtering UI
-  - [ ] 23.1 Create TransactionTable component
+- [x] 23. Implement transaction list and filtering UI
+
+
+
+
+
+  - [x] 23.1 Create TransactionTable component
+
+
     - Display transactions in sortable table
     - Show columns: date, description, category, amount, account
     - Add expand/collapse for split transactions
@@ -806,7 +836,9 @@ all transaction data
     - Show document icon for transactions with attachments
     - _Requirements: 14.1, 14.3, 16.5, 18.4_
   
-  - [ ] 23.2 Create transaction filter controls
+  - [x] 23.2 Create transaction filter controls
+
+
     - Add date range picker
     - Add account filter dropdown
     - Add category filter with hierarchy
@@ -815,7 +847,10 @@ all transaction data
     - Display filtered totals
     - _Requirements: 14.2, 14.4, 14.5_
   
-  - [ ] 23.3 Create TransactionsPage
+  - [x] 23.3 Create TransactionsPage
+
+
+
     - Integrate TransactionTable and filters
     - Add "Add Transaction" button
     - Implement pagination
