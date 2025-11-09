@@ -15,6 +15,9 @@ router.get('/:id/items', transactionController.getSplitTransactionItems);
 // POST /api/transactions - Create new transaction
 router.post('/', transactionController.createTransaction);
 
+// POST /api/transactions/bulk - Create multiple transactions (import approval)
+router.post('/bulk', transactionController.createBulkTransactions);
+
 // POST /api/transactions/split - Create split transaction
 router.post('/split', transactionController.createSplitTransaction);
 

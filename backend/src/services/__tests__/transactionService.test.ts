@@ -837,3 +837,180 @@ describe('Transaction Service', () => {
     });
   });
 });
+
+  describe('createBulkTransactions', () => {
+    it('should create multiple transactions in bulk', async () => {
+      const bulkData = {
+        transactions: [
+          {
+            date: new Date('2024-01-15'),
+            amount: 100,
+            type: 'EXPENSE' as const,
+            description: 'Transaction 1',
+            accountId: testAccountId,
+          },
+          {
+            date: new Date('2024-01-16'),
+            amount: 200,
+            type: 'INCOME' as const,
+            description: 'Transaction 2',
+            accountId: testAccountId,
+          },
+          {
+            date: new Date('2024-01-17'),
+            amount: 50,
+            type: 'EXPENSE' as const,
+            description: 'Transaction 3',
+            accountId: testAccountId,
+            categoryId: testCategoryId,
+          },
+        ],
+      };
+
+      const transactions = await transactionService.createBulkTransactions(bulkData, testUserId);
+
+      expect(transactions).toHaveLength(3);
+      expect(transactions[0].description).toBe('Transaction 1');
+      expect(transactions[1].description).toBe('Transaction 2');
+      expect(transactions[2].description).toBe('Transaction 3');
+      expect(transactions[2].category?.id).toBe(testCategoryId);
+
+      // Verify account balance: -100 + 200 - 50 = 50
+      const account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(50);
+    });
+
+    it('should create bulk transactions with split transactions', async () => {
+      const bulkData = {
+        transactions: [
+          {
+            date: new Date('2024-01-15'),
+            amount: 100,
+            type: 'EXPENSE' as const,
+            description: 'Regular Transaction',
+            accountId: testAccountId,
+          },
+          {
+            date: new Date('2024-01-16'),
+            amount: 150,
+            type: 'EXPENSE' as const,
+            description: 'Split Transaction',
+            accountId: testAccountId,
+            split: true,
+            items: [
+              {
+                amount: 100,
+                description: 'Item 1',
+                categoryId: testCategoryId,
+              },
+              {
+                amount: 50,
+                description: 'Item 2',
+              },
+            ],
+          },
+        ],
+      };
+
+      const transactions = await transactionService.createBulkTransactions(bulkData, testUserId);
+
+      expect(transactions).toHaveLength(2);
+      expect(transactions[0].description).toBe('Regular Transaction');
+      expect(transactions[1].description).toBe('Split Transaction');
+      expect(transactions[1].isParent).toBe(true);
+
+      // Verify split items were created
+      const splitItems = await transactionService.getSplitTransactionItems(
+        transactions[1].id,
+        testUserId
+      );
+      expect(splitItems).toHaveLength(2);
+      expect(splitItems[0].amount).toBe(100);
+      expect(splitItems[1].amount).toBe(50);
+
+      // Verify account balance: -100 - 150 = -250
+      const account = await accountService.getAccountById(testAccountId, testUserId);
+      expect(account?.balance).toBe(-250);
+    });
+
+    it('should throw error when bulk data is empty', async () => {
+      const bulkData = {
+        transactions: [],
+      };
+
+      await expect(
+        transactionService.createBulkTransactions(bulkData, testUserId)
+      ).rejects.toThrow();
+    });
+
+    it('should throw error when transaction has invalid amount', async () => {
+      const bulkData = {
+        transactions: [
+          {
+            date: new Date('2024-01-15'),
+            amount: -100,
+            type: 'EXPENSE' as const,
+            description: 'Invalid Transaction',
+            accountId: testAccountId,
+          },
+        ],
+      };
+
+      await expect(
+        transactionService.createBulkTransactions(bulkData, testUserId)
+      ).rejects.toThrow();
+    });
+
+    it('should handle partial failures and report errors', async () => {
+      const bulkData = {
+        transactions: [
+          {
+            date: new Date('2024-01-15'),
+            amount: 100,
+            type: 'EXPENSE' as const,
+            description: 'Valid Transaction',
+            accountId: testAccountId,
+          },
+          {
+            date: new Date('2024-01-16'),
+            amount: 200,
+            type: 'EXPENSE' as const,
+            description: 'Invalid Account',
+            accountId: '00000000-0000-0000-0000-000000000000', // Non-existent account
+          },
+        ],
+      };
+
+      await expect(
+        transactionService.createBulkTransactions(bulkData, testUserId)
+      ).rejects.toThrow('Failed to create');
+    });
+
+    it('should create bulk transactions with tags', async () => {
+      const tag = await prisma.tag.create({
+        data: {
+          name: 'Test Tag',
+          userId: testUserId,
+        },
+      });
+
+      const bulkData = {
+        transactions: [
+          {
+            date: new Date('2024-01-15'),
+            amount: 100,
+            type: 'EXPENSE' as const,
+            description: 'Transaction with Tag',
+            accountId: testAccountId,
+            tagIds: [tag.id],
+          },
+        ],
+      };
+
+      const transactions = await transactionService.createBulkTransactions(bulkData, testUserId);
+
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].tags).toHaveLength(1);
+      expect(transactions[0].tags[0].tag.id).toBe(tag.id);
+    });
+  });

@@ -461,3 +461,73 @@ export async function getSplitTransactionItems(req: Request, res: Response): Pro
     });
   }
 }
+
+/**
+ * POST /api/transactions/bulk
+ * Create multiple transactions in bulk (for import approval)
+ */
+export async function createBulkTransactions(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = await getUserId(req);
+    
+    const transactions = await transactionService.createBulkTransactions(req.body, userId);
+    res.status(201).json({
+      success: true,
+      count: transactions.length,
+      transactions,
+    });
+  } catch (error) {
+    console.error('Error creating bulk transactions:', error);
+    
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid bulk transaction data',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+      });
+      return;
+    }
+
+    if (error instanceof Error) {
+      if (error.message.includes('not found')) {
+        res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      if (error.message.includes('Failed to create')) {
+        res.status(400).json({
+          error: {
+            code: 'BULK_CREATE_ERROR',
+            message: error.message,
+          },
+        });
+        return;
+      }
+
+      res.status(400).json({
+        error: {
+          code: 'BAD_REQUEST',
+          message: error.message,
+        },
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create bulk transactions',
+      },
+    });
+  }
+}

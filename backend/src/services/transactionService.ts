@@ -1003,3 +1003,94 @@ export async function getSplitTransactionItems(
     orderBy: { createdAt: 'asc' },
   });
 }
+
+// Import Review Service Functions
+
+export const BulkTransactionItemSchema = z.object({
+  date: z.string().datetime().or(z.date()),
+  amount: z.number().positive('Amount must be greater than 0'),
+  type: TransactionTypeSchema,
+  description: z.string().min(1, 'Description is required'),
+  notes: z.string().optional(),
+  accountId: z.string().uuid('Invalid account ID'),
+  categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
+  tagIds: z.array(z.string().uuid()).optional(),
+  split: z.boolean().optional(),
+  items: z.array(SplitItemSchema).optional(),
+});
+
+export const BulkTransactionSchema = z.object({
+  transactions: z.array(BulkTransactionItemSchema).min(1, 'At least one transaction is required'),
+});
+
+export type BulkTransactionItem = z.infer<typeof BulkTransactionItemSchema>;
+export type BulkTransactionInput = z.infer<typeof BulkTransactionSchema>;
+
+/**
+ * Create multiple transactions in bulk
+ * Used for approving imported transactions from the review interface
+ */
+export async function createBulkTransactions(
+  data: BulkTransactionInput,
+  userId: string
+): Promise<TransactionWithRelations[]> {
+  // Validate input
+  const validated = BulkTransactionSchema.parse(data);
+
+  const createdTransactions: TransactionWithRelations[] = [];
+  const errors: Array<{ index: number; error: string }> = [];
+
+  // Process each transaction
+  for (let i = 0; i < validated.transactions.length; i++) {
+    const transactionData = validated.transactions[i];
+
+    try {
+      // Check if this is a split transaction
+      if (transactionData.split && transactionData.items && transactionData.items.length > 0) {
+        // Create split transaction
+        const result = await createSplitTransaction({
+          date: transactionData.date,
+          amount: transactionData.amount,
+          type: transactionData.type,
+          description: transactionData.description,
+          notes: transactionData.notes,
+          accountId: transactionData.accountId,
+          userId,
+          items: transactionData.items,
+        });
+
+        createdTransactions.push(result.parent);
+      } else {
+        // Create regular transaction
+        const transaction = await createTransaction({
+          date: transactionData.date,
+          amount: transactionData.amount,
+          type: transactionData.type,
+          description: transactionData.description,
+          notes: transactionData.notes,
+          accountId: transactionData.accountId,
+          categoryId: transactionData.categoryId,
+          userId,
+          tagIds: transactionData.tagIds,
+        });
+
+        createdTransactions.push(transaction);
+      }
+    } catch (error) {
+      // Collect errors but continue processing other transactions
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      errors.push({
+        index: i,
+        error: errorMessage,
+      });
+    }
+  }
+
+  // If there were errors, throw an error with details
+  if (errors.length > 0) {
+    const errorDetails = errors.map(e => `Transaction ${e.index + 1}: ${e.error}`).join('; ');
+    throw new Error(`Failed to create ${errors.length} transaction(s): ${errorDetails}`);
+  }
+
+  return createdTransactions;
+}
