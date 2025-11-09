@@ -1,0 +1,23 @@
+# Core web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# PDF parsing
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+
+# OCR
+pytesseract==0.3.10
+Pillow>=10.1.0
+
+# Machine learning
+scikit-learn==1.3.2
+numpy==1.26.2
+
+# Utilities
+python-dotenv==1.0.0
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
