@@ -22,4 +22,10 @@ router.get('/:id', documentController.downloadDocument);
  */
 router.get('/:id/transactions', documentController.getDocumentTransactions);
 
+/**
+ * POST /api/documents/parse
+ * Parse a document using AI service
+ */
+router.post('/parse', documentController.parseDocument);
+
 export default router;

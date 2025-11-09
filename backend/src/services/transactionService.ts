@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { TransactionType } from '../types/enums';
 import * as accountService from './accountService';
+import { aiService } from './aiService';
 
 const prisma = new PrismaClient();
 
@@ -298,11 +299,39 @@ export async function createTransaction(
     throw new Error('Account not found');
   }
 
+  // Auto-suggest category if not provided
+  let categoryId = validated.categoryId;
+  if (!categoryId && validated.type !== 'TRANSFER') {
+    try {
+      const suggestion = await aiService.suggestCategory(
+        validated.description,
+        validated.amount
+      );
+      
+      if (suggestion.success && suggestion.suggestion) {
+        // Try to find matching category by name
+        const matchedCategory = await prisma.category.findFirst({
+          where: {
+            name: suggestion.suggestion.category,
+            userId: validated.userId,
+          },
+        });
+        
+        if (matchedCategory) {
+          categoryId = matchedCategory.id;
+        }
+      }
+    } catch (error) {
+      // Silently fail - categorization is optional
+      console.log('Auto-categorization failed, continuing without category:', error);
+    }
+  }
+
   // Verify category exists and belongs to user if provided
-  if (validated.categoryId) {
+  if (categoryId) {
     const category = await prisma.category.findFirst({
       where: {
-        id: validated.categoryId,
+        id: categoryId,
         userId: validated.userId,
       },
     });
@@ -325,7 +354,7 @@ export async function createTransaction(
       description: validated.description,
       notes: validated.notes,
       accountId: validated.accountId,
-      categoryId: validated.categoryId,
+      categoryId: categoryId,
       userId: validated.userId,
       isParent: false,
     },

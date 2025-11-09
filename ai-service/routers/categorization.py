@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from schemas import CategorizeRequest, CategorizeResponse, CategorySuggestion
 from schemas import TrainRequest, TrainResponse
+from models.categorizer import get_categorizer
 
 router = APIRouter()
 
@@ -20,41 +21,25 @@ async def categorize_transaction(request: CategorizeRequest):
     Returns:
         CategorizeResponse with category suggestion
     """
-    # Placeholder implementation - will be enhanced in future tasks
-    # For now, return a basic categorization based on keywords
-    
-    description_lower = request.description.lower()
-    
-    # Simple keyword-based categorization
-    category_keywords = {
-        "Food & Dining": ["grocery", "restaurant", "food", "cafe", "coffee", "lunch", "dinner"],
-        "Transportation": ["gas", "fuel", "uber", "lyft", "taxi", "parking", "transit"],
-        "Shopping": ["amazon", "walmart", "target", "store", "shop"],
-        "Utilities": ["electric", "water", "gas", "internet", "phone", "utility"],
-        "Entertainment": ["movie", "netflix", "spotify", "game", "concert"],
-        "Healthcare": ["doctor", "pharmacy", "hospital", "medical", "health"],
-        "Housing": ["rent", "mortgage", "insurance", "hoa"],
-    }
-    
-    for category, keywords in category_keywords.items():
-        for keyword in keywords:
-            if keyword in description_lower:
-                return CategorizeResponse(
-                    success=True,
-                    suggestion=CategorySuggestion(
-                        category=category,
-                        confidence=0.7
-                    )
-                )
-    
-    # Default to uncategorized
-    return CategorizeResponse(
-        success=True,
-        suggestion=CategorySuggestion(
-            category="Uncategorized",
-            confidence=0.3
+    try:
+        categorizer = get_categorizer()
+        category, confidence = categorizer.categorize(
+            description=request.description,
+            amount=request.amount
         )
-    )
+        
+        return CategorizeResponse(
+            success=True,
+            suggestion=CategorySuggestion(
+                category=category,
+                confidence=confidence
+            )
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Categorization failed: {str(e)}"
+        )
 
 
 @router.post("/train", response_model=TrainResponse)
@@ -68,10 +53,26 @@ async def train_categorization(request: TrainRequest):
     Returns:
         TrainResponse indicating success
     """
-    # Placeholder implementation - will be enhanced in future tasks
-    # This will store the training data and update the ML model
-    
-    return TrainResponse(
-        success=True,
-        message="Training data recorded successfully"
-    )
+    try:
+        categorizer = get_categorizer()
+        success = categorizer.learn(
+            description=request.description,
+            category=request.category,
+            amount=request.amount
+        )
+        
+        if success:
+            return TrainResponse(
+                success=True,
+                message="Training data recorded successfully"
+            )
+        else:
+            return TrainResponse(
+                success=False,
+                message="Failed to record training data"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Training failed: {str(e)}"
+        )

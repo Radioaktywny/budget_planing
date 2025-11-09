@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { documentService } from '../services/documentService';
+import { parsingService } from '../services/parsingService';
 import path from 'path';
 import fs from 'fs';
 
@@ -158,6 +159,149 @@ export const documentController = {
           code: 'FETCH_ERROR', 
           message: 'Failed to fetch document transactions' 
         } 
+      });
+    }
+  },
+
+  /**
+   * Parse a document using AI service
+   * POST /api/documents/parse
+   */
+  async parseDocument(req: Request, res: Response): Promise<void> {
+    try {
+      const { documentId } = req.body;
+
+      if (!documentId) {
+        res.status(400).json({
+          error: {
+            code: 'MISSING_DOCUMENT_ID',
+            message: 'Document ID is required'
+          }
+        });
+        return;
+      }
+
+      // Get document from database
+      const document = await documentService.getDocumentById(documentId);
+
+      if (!document) {
+        res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Document not found'
+          }
+        });
+        return;
+      }
+
+      // Get file path
+      const filePath = path.join(process.cwd(), document.path);
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        res.status(404).json({
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: 'Document file not found on server'
+          }
+        });
+        return;
+      }
+
+      // Check AI service health
+      const isHealthy = await parsingService.checkAIServiceHealth();
+      if (!isHealthy) {
+        res.status(503).json({
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'AI service is currently unavailable. Please try again later.'
+          }
+        });
+        return;
+      }
+
+      // Parse document based on type
+      let result;
+      if (document.mimeType === 'application/pdf') {
+        result = await parsingService.parsePDF(filePath);
+      } else if (document.mimeType.startsWith('image/')) {
+        result = await parsingService.parseReceipt(filePath);
+      } else {
+        res.status(400).json({
+          error: {
+            code: 'UNSUPPORTED_TYPE',
+            message: 'Unsupported document type for parsing'
+          }
+        });
+        return;
+      }
+
+      // Handle parsing result
+      if (!result.success) {
+        res.status(500).json({
+          error: {
+            code: 'PARSING_FAILED',
+            message: result.error || 'Failed to parse document'
+          }
+        });
+        return;
+      }
+
+      // For PDF: return transactions array
+      // For Receipt: return transaction and items
+      if ('transactions' in result) {
+        // PDF result
+        const pendingTransactions = await parsingService.createPendingTransactions(
+          documentId,
+          result.transactions
+        );
+
+        res.json({
+          success: true,
+          documentId,
+          documentType: 'pdf',
+          transactions: pendingTransactions,
+          message: result.message || `Successfully parsed ${pendingTransactions.length} transactions`
+        });
+      } else {
+        // Receipt result
+        const transactions = [];
+        
+        if (result.transaction) {
+          // If there are items, create a split transaction
+          if (result.items && result.items.length > 0) {
+            transactions.push({
+              ...result.transaction,
+              documentId,
+              pending: true,
+              split: true,
+              items: result.items
+            });
+          } else {
+            // Single transaction
+            transactions.push({
+              ...result.transaction,
+              documentId,
+              pending: true
+            });
+          }
+        }
+
+        res.json({
+          success: true,
+          documentId,
+          documentType: 'receipt',
+          transactions,
+          message: result.message || 'Successfully parsed receipt'
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing document:', error);
+      res.status(500).json({
+        error: {
+          code: 'PARSE_ERROR',
+          message: 'Failed to parse document'
+        }
       });
     }
   }
