@@ -1,16 +1,41 @@
 import apiClient from './api';
 import { ImportRequest, ParsedTransaction } from '../types';
 
+interface ImportPreview {
+  transactions: ParsedTransaction[];
+  warnings: string[];
+  document?: {
+    filename?: string;
+    date?: string;
+  };
+}
+
+interface ImportResponse {
+  success: boolean;
+  preview: ImportPreview;
+}
+
+interface ValidationResponse {
+  valid: boolean;
+  message?: string;
+  transactionCount?: number;
+  errors?: Array<{
+    field: string;
+    message: string;
+    index?: number;
+  }>;
+}
+
 export const importService = {
   // Import from JSON
-  importJSON: async (data: ImportRequest): Promise<ParsedTransaction[]> => {
-    const response = await apiClient.post<ParsedTransaction[]>('/import/json', data);
+  importJSON: async (data: ImportRequest): Promise<ImportResponse> => {
+    const response = await apiClient.post<ImportResponse>('/import/json', data);
     return response.data;
   },
 
   // Import from YAML
-  importYAML: async (yamlContent: string): Promise<ParsedTransaction[]> => {
-    const response = await apiClient.post<ParsedTransaction[]>('/import/yaml', {
+  importYAML: async (yamlContent: string): Promise<ImportResponse> => {
+    const response = await apiClient.post<ImportResponse>('/import/yaml', {
       yaml: yamlContent,
     });
     return response.data;
@@ -23,8 +48,8 @@ export const importService = {
   },
 
   // Validate import file
-  validate: async (data: ImportRequest): Promise<{ valid: boolean; errors?: string[] }> => {
-    const response = await apiClient.post<{ valid: boolean; errors?: string[] }>(
+  validate: async (data: ImportRequest | { yaml: string }): Promise<ValidationResponse> => {
+    const response = await apiClient.post<ValidationResponse>(
       '/import/validate',
       data
     );

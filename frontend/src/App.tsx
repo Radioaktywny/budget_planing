@@ -8,6 +8,7 @@ import {
   CategoriesPage,
   ReportsPage,
   ImportPage,
+  ImportDataPage,
 } from './pages';
 
 const App: React.FC = () => {
@@ -21,6 +22,7 @@ const App: React.FC = () => {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="import" element={<ImportPage />} />
+          <Route path="import-data" element={<ImportDataPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

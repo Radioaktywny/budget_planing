@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { FileUpload } from '../components';
+import { FileUpload, ImportReview } from '../components';
 import { documentService } from '../services/documentService';
-import { Document, ParsedTransaction } from '../types';
+import { transactionService } from '../services/transactionService';
+import { Document, TransactionType } from '../types';
+import { ImportReviewTransaction } from '../components/ImportReview';
 
 type DocumentType = 'bank_statement' | 'receipt';
 
@@ -10,15 +12,17 @@ const ImportPage: React.FC = () => {
   const [documentType, setDocumentType] = useState<DocumentType>('bank_statement');
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [uploadedDocument, setUploadedDocument] = useState<Document | null>(null);
-  const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
+  const [reviewTransactions, setReviewTransactions] = useState<ImportReviewTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     setError(null);
     setUploadedDocument(null);
-    setParsedTransactions([]);
+    setReviewTransactions([]);
   };
 
   const handleUpload = async () => {
@@ -46,8 +50,25 @@ const ImportPage: React.FC = () => {
     setError(null);
 
     try {
-      const transactions = await documentService.parse(documentId);
-      setParsedTransactions(transactions);
+      const parsedTransactions = await documentService.parse(documentId);
+      
+      // Convert parsed transactions to review format
+      const reviewTxns: ImportReviewTransaction[] = parsedTransactions.map((t, index) => ({
+        id: `parsed-${index}`,
+        date: t.date,
+        amount: t.amount,
+        type: TransactionType.EXPENSE, // Default to expense, user can change
+        description: t.description,
+        category: t.category,
+        categoryId: undefined,
+        account: '', // User needs to select
+        accountId: undefined,
+        notes: undefined,
+        selected: true,
+        expanded: false,
+      }));
+      
+      setReviewTransactions(reviewTxns);
     } catch (err: any) {
       setError(err.message || 'Failed to parse document');
       console.error('Parse error:', err);
@@ -56,16 +77,95 @@ const ImportPage: React.FC = () => {
     }
   };
 
+  const handleApproveTransactions = async (transactions: ImportReviewTransaction[]) => {
+    setIsApproving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Validate that all transactions have required fields
+      const invalidTransactions = transactions.filter(t => !t.accountId || !t.date || !t.description);
+      if (invalidTransactions.length > 0) {
+        setError('Please ensure all transactions have an account, date, and description selected');
+        setIsApproving(false);
+        return;
+      }
+
+      let successCount = 0;
+      
+      for (const transaction of transactions) {
+        if (transaction.split && transaction.items && transaction.items.length > 0) {
+          // Handle split transactions - use createSplit endpoint
+          await transactionService.createSplit({
+            date: transaction.date,
+            amount: transaction.amount,
+            description: transaction.description,
+            accountId: transaction.accountId!,
+            items: transaction.items.map(item => ({
+              amount: item.amount,
+              description: item.description,
+              categoryId: item.categoryId,
+              notes: item.notes,
+            })),
+          });
+          successCount++;
+        } else {
+          // Handle regular transactions - use bulk create
+          await transactionService.create({
+            date: transaction.date,
+            amount: transaction.amount,
+            type: transaction.type,
+            description: transaction.description,
+            notes: transaction.notes,
+            accountId: transaction.accountId!,
+            categoryId: transaction.categoryId,
+            tagIds: transaction.tagIds,
+          });
+          successCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        setSuccessMessage(`Successfully imported ${successCount} transaction(s)`);
+        
+        // Reset state after successful import
+        setTimeout(() => {
+          handleReset();
+        }, 2000);
+      } else {
+        setError('No valid transactions to import');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve transactions');
+      console.error('Approval error:', err);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleCancelReview = () => {
+    setReviewTransactions([]);
+  };
+
   const handleReset = () => {
     setSelectedFile(null);
     setUploadedDocument(null);
-    setParsedTransactions([]);
+    setReviewTransactions([]);
     setError(null);
+    setSuccessMessage(null);
   };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Import Documents</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Import Documents</h1>
+        <a
+          href="/import-data"
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
+        >
+          Import from JSON/YAML
+        </a>
+      </div>
 
       {!uploadedDocument && (
         <div className="bg-white rounded-lg shadow p-6 space-y-6">
@@ -196,56 +296,40 @@ const ImportPage: React.FC = () => {
         </div>
       )}
 
-      {/* Import Review Interface (Placeholder for Task 26) */}
-      {parsedTransactions.length > 0 && !isParsing && (
-        <div className="bg-white rounded-lg shadow p-6 mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Parsed Transactions</h2>
-            <button
-              onClick={handleReset}
-              className="text-sm text-gray-600 hover:text-gray-800"
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-6">
+          <div className="flex items-start">
+            <svg
+              className="h-5 w-5 text-green-500 mt-0.5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              Upload Another Document
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-green-800">Success</h3>
+              <p className="text-sm text-green-700 mt-1">{successMessage}</p>
+            </div>
           </div>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <p className="text-sm text-blue-800">
-              Found {parsedTransactions.length} transaction(s). Import review interface will be implemented in Task 26.
-            </p>
-          </div>
+        </div>
+      )}
 
-          {/* Display parsed transactions */}
-          <div className="space-y-2">
-            {parsedTransactions.map((transaction, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-              >
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="font-medium">Date:</span> {transaction.date}
-                  </div>
-                  <div>
-                    <span className="font-medium">Amount:</span> ${transaction.amount.toFixed(2)}
-                  </div>
-                  <div className="col-span-2">
-                    <span className="font-medium">Description:</span> {transaction.description}
-                  </div>
-                  {transaction.category && (
-                    <div className="col-span-2">
-                      <span className="font-medium">Category:</span> {transaction.category}
-                      {transaction.confidence && (
-                        <span className="text-gray-500 ml-2">
-                          ({Math.round(transaction.confidence * 100)}% confidence)
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Import Review Interface */}
+      {reviewTransactions.length > 0 && !isParsing && !successMessage && (
+        <div className="mt-6">
+          <ImportReview
+            transactions={reviewTransactions}
+            onApprove={handleApproveTransactions}
+            onCancel={handleCancelReview}
+            loading={isApproving}
+          />
         </div>
       )}
     </div>

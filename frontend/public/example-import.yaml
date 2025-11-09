@@ -1,0 +1,35 @@
+version: "1.0"
+source: "manual_entry"
+document:
+  filename: "example_transactions.yaml"
+  date: "2024-01-31"
+transactions:
+  - date: "2024-01-15"
+    amount: 50.00
+    type: "expense"
+    description: "Grocery Store Purchase"
+    category: "Food & Dining"
+    account: "Checking Account"
+    notes: "Weekly groceries"
+  - date: "2024-01-20"
+    amount: 3000.00
+    type: "income"
+    description: "Salary Payment"
+    category: "Salary"
+    account: "Checking Account"
+  - date: "2024-01-18"
+    amount: 85.50
+    type: "expense"
+    description: "Walmart Receipt"
+    account: "Credit Card"
+    split: true
+    items:
+      - amount: 35.00
+        description: "Groceries"
+        category: "Food & Dining"
+      - amount: 40.00
+        description: "USB Cable"
+        category: "Electronics"
+      - amount: 10.50
+        description: "Shampoo"
+        category: "Personal Care"

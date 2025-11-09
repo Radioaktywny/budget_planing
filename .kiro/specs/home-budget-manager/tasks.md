@@ -922,8 +922,15 @@ all transaction data
     - Show document metadata
     - _Requirements: 16.3, 16.4_
 
-- [ ] 26. Implement import review interface
-  - [ ] 26.1 Create ImportReview component
+- [x] 26. Implement import review interface
+
+
+
+
+
+
+  - [x] 26.1 Create ImportReview component
+
     - Display parsed transactions in editable table
     - Allow editing category, amount, date, description
     - Add checkbox to select/deselect transactions
@@ -931,13 +938,19 @@ all transaction data
     - Add "Approve All" and "Approve Selected" buttons
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   
-  - [ ] 26.2 Add split transaction support in review
+
+  - [x] 26.2 Add split transaction support in review
+
     - Allow splitting single transaction into multiple items
     - Show split transaction UI in review table
     - Validate item amounts sum to total
     - _Requirements: 18.1, 18.2_
 
-- [ ] 27. Implement JSON/YAML import UI
+- [x] 27. Implement JSON/YAML import UI
+
+
+
+
   - Create ImportDataPage component
   - Add file upload for JSON/YAML files
   - Show schema documentation
