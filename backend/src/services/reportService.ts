@@ -22,9 +22,10 @@ export interface CategoryBreakdown {
 }
 
 export interface NetBalancePoint {
-  month: string; // Format: YYYY-MM
-  netBalance: number;
-  cumulativeBalance: number;
+  date: string; // Format: YYYY-MM
+  balance: number;
+  income: number;
+  expenses: number;
 }
 
 /**
@@ -52,6 +53,11 @@ export async function calculateMonthlySummary(
       date: true,
       amount: true,
       type: true,
+      category: {
+        select: {
+          name: true,
+        },
+      },
     },
     orderBy: {
       date: 'asc',
@@ -62,8 +68,11 @@ export async function calculateMonthlySummary(
   const monthlyData = new Map<string, { income: number; expenses: number; count: number }>();
 
   for (const transaction of transactions) {
-    // Skip transfers
-    if (transaction.type === TransactionType.TRANSFER) {
+    // Skip transfers (by type or by category name)
+    if (
+      transaction.type === TransactionType.TRANSFER ||
+      transaction.category?.name.toLowerCase().includes('transfer')
+    ) {
       continue;
     }
 
@@ -168,6 +177,11 @@ export async function calculateCategoryBreakdown(
     const parentId = transaction.category?.parentId;
     const parentName = transaction.category?.parent?.name;
 
+    // Skip transactions with "Transfer" category
+    if (categoryName.toLowerCase().includes('transfer')) {
+      continue;
+    }
+
     if (!categoryData.has(categoryId)) {
       categoryData.set(categoryId, {
         name: categoryName,
@@ -206,7 +220,7 @@ export async function calculateCategoryBreakdown(
 /**
  * Calculate net balance over time (monthly)
  * Excludes transfers from calculations
- * Returns both monthly net balance and cumulative balance
+ * Returns monthly income, expenses, and net balance
  */
 export async function calculateNetBalanceOverTime(
   userId: string,
@@ -216,19 +230,13 @@ export async function calculateNetBalanceOverTime(
   // Get monthly summaries
   const monthlySummaries = await calculateMonthlySummary(userId, startDate, endDate);
 
-  // Calculate cumulative balance
-  let cumulativeBalance = 0;
-  const netBalancePoints: NetBalancePoint[] = [];
-
-  for (const summary of monthlySummaries) {
-    cumulativeBalance += summary.netBalance;
-
-    netBalancePoints.push({
-      month: summary.month,
-      netBalance: summary.netBalance,
-      cumulativeBalance,
-    });
-  }
+  // Map to NetBalancePoint format
+  const netBalancePoints: NetBalancePoint[] = monthlySummaries.map((summary) => ({
+    date: summary.month,
+    balance: summary.netBalance,
+    income: summary.income,
+    expenses: summary.expenses,
+  }));
 
   return netBalancePoints;
 }

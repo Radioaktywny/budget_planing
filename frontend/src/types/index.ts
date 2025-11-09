@@ -18,6 +18,8 @@ export interface Account {
   name: string;
   type: AccountType;
   balance: number;
+  initialBalance: number;
+  initialBalanceDate?: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -86,11 +88,15 @@ export interface Document {
 export interface CreateAccountRequest {
   name: string;
   type: AccountType;
+  initialBalance?: number;
+  initialBalanceDate?: string;
 }
 
 export interface UpdateAccountRequest {
   name?: string;
   type?: AccountType;
+  initialBalance?: number;
+  initialBalanceDate?: string;
 }
 
 export interface CreateTransactionRequest {

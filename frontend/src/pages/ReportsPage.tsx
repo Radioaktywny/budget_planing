@@ -105,12 +105,34 @@ const ReportsPage: React.FC = () => {
     setEndDate(end.toISOString().split('T')[0]);
   };
 
-  // Prepare chart data
-  const expenseChartData = report?.expenseBreakdown.map(item => ({
-    name: item.categoryName,
-    value: item.amount,
-    color: item.color,
-  })) || [];
+  // Prepare chart data - show only top 8 categories, group rest as "Other"
+  const expenseChartData = (() => {
+    if (!report?.expenseBreakdown || report.expenseBreakdown.length === 0) return [];
+    
+    // Sort by amount descending
+    const sorted = [...report.expenseBreakdown].sort((a, b) => b.amount - a.amount);
+    
+    // Take top 8 categories
+    const top8 = sorted.slice(0, 8).map(item => ({
+      name: item.categoryName,
+      value: item.amount,
+      color: item.color,
+    }));
+    
+    // Group remaining as "Other"
+    if (sorted.length > 8) {
+      const otherAmount = sorted.slice(8).reduce((sum, item) => sum + item.amount, 0);
+      if (otherAmount > 0) {
+        top8.push({
+          name: 'Other',
+          value: otherAmount,
+          color: '#9CA3AF', // gray-400
+        });
+      }
+    }
+    
+    return top8;
+  })();
 
   const monthComparisonData = report?.summary.map(item => ({
     name: item.month,
@@ -273,21 +295,21 @@ const ReportsPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-4 sm:p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Total Income</h3>
               <p className="text-2xl sm:text-3xl font-bold text-green-600">
-                ${report.totals.totalIncome.toFixed(2)}
+                {formatCurrency(report.totals.totalIncome)}
               </p>
             </div>
             
             <div className="bg-white rounded-lg shadow p-4 sm:p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Total Expenses</h3>
               <p className="text-2xl sm:text-3xl font-bold text-red-600">
-                ${report.totals.totalExpenses.toFixed(2)}
+                {formatCurrency(report.totals.totalExpenses)}
               </p>
             </div>
             
             <div className="bg-white rounded-lg shadow p-4 sm:p-6 sm:col-span-2 md:col-span-1">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Net Balance</h3>
               <p className={`text-2xl sm:text-3xl font-bold ${report.totals.totalNetBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${report.totals.totalNetBalance.toFixed(2)}
+                {formatCurrency(report.totals.totalNetBalance)}
               </p>
             </div>
           </div>

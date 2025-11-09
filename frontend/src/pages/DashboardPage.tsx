@@ -224,11 +224,11 @@ const DashboardPage: React.FC = () => {
         <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-md border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">Expense Breakdown</h2>
           {chartData.length > 0 ? (
-            <div className="h-80">
+            <div className="h-96">
               <PieChart data={chartData} />
             </div>
           ) : (
-            <div className="h-80 flex flex-col items-center justify-center text-gray-400">
+            <div className="h-96 flex flex-col items-center justify-center text-gray-400">
               <TrendingDown className="h-12 w-12 mb-3 opacity-50" />
               <p className="font-medium">No expenses this month</p>
             </div>

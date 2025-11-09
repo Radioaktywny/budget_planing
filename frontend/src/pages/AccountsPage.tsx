@@ -19,6 +19,8 @@ const AccountsPage: React.FC = () => {
   const [formData, setFormData] = useState<CreateAccountRequest>({
     name: '',
     type: AccountType.CHECKING,
+    initialBalance: 0,
+    initialBalanceDate: new Date().toISOString().split('T')[0],
   });
 
   // Load accounts
@@ -61,10 +63,17 @@ const AccountsPage: React.FC = () => {
       const updateData: UpdateAccountRequest = {
         name: formData.name,
         type: formData.type,
+        initialBalance: formData.initialBalance,
+        initialBalanceDate: formData.initialBalanceDate ? new Date(formData.initialBalanceDate + 'T12:00:00').toISOString() : undefined,
       };
       await accountService.update(editingAccount.id, updateData);
       setEditingAccount(null);
-      setFormData({ name: '', type: AccountType.CHECKING });
+      setFormData({ 
+        name: '', 
+        type: AccountType.CHECKING, 
+        initialBalance: 0, 
+        initialBalanceDate: new Date().toISOString().split('T')[0] 
+      });
       await loadAccounts();
     },
     {
@@ -112,13 +121,20 @@ const AccountsPage: React.FC = () => {
     setFormData({
       name: account.name,
       type: account.type,
+      initialBalance: account.initialBalance || 0,
+      initialBalanceDate: account.initialBalanceDate ? account.initialBalanceDate.split('T')[0] : new Date().toISOString().split('T')[0],
     });
   };
 
   // Close edit modal
   const closeEditModal = () => {
     setEditingAccount(null);
-    setFormData({ name: '', type: AccountType.CHECKING });
+    setFormData({ 
+      name: '', 
+      type: AccountType.CHECKING, 
+      initialBalance: 0, 
+      initialBalanceDate: new Date().toISOString().split('T')[0] 
+    });
   };
 
   // Get account type icon
@@ -214,7 +230,7 @@ const AccountsPage: React.FC = () => {
       {/* Create Account Modal */}
       {showCreateForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Create New Account</h2>
             <form onSubmit={handleCreate}>
               <div className="mb-4">
@@ -230,7 +246,7 @@ const AccountsPage: React.FC = () => {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   Account Type
                 </label>
@@ -245,12 +261,42 @@ const AccountsPage: React.FC = () => {
                   <option value={AccountType.CASH}>Cash</option>
                 </select>
               </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Initial Balance (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.initialBalance || 0}
+                  onChange={(e) => setFormData({ ...formData, initialBalance: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set the starting balance if you don't have full transaction history
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Initial Balance Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={formData.initialBalanceDate || ''}
+                  onChange={(e) => setFormData({ ...formData, initialBalanceDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Date from which to calculate balance
+                </p>
+              </div>
               <div className="flex space-x-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setFormData({ name: '', type: AccountType.CHECKING });
+                    setFormData({ name: '', type: AccountType.CHECKING, initialBalance: 0, initialBalanceDate: new Date().toISOString().split('T')[0] });
                   }}
                   className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors"
                 >
@@ -272,7 +318,7 @@ const AccountsPage: React.FC = () => {
       {/* Edit Account Modal */}
       {editingAccount && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Edit Account</h2>
             <form onSubmit={handleUpdate}>
               <div className="mb-4">
@@ -288,7 +334,7 @@ const AccountsPage: React.FC = () => {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   Account Type
                 </label>
@@ -302,6 +348,36 @@ const AccountsPage: React.FC = () => {
                   <option value={AccountType.CREDIT_CARD}>Credit Card</option>
                   <option value={AccountType.CASH}>Cash</option>
                 </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Initial Balance (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.initialBalance || 0}
+                  onChange={(e) => setFormData({ ...formData, initialBalance: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set the starting balance if you don't have full transaction history
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Initial Balance Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={formData.initialBalanceDate || ''}
+                  onChange={(e) => setFormData({ ...formData, initialBalanceDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Date from which to calculate balance
+                </p>
               </div>
               <div className="flex space-x-3">
                 <button

@@ -297,10 +297,13 @@ export const documentController = {
       }
     } catch (error) {
       console.error('Error parsing document:', error);
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({
         error: {
           code: 'PARSE_ERROR',
-          message: 'Failed to parse document'
+          message: 'Failed to parse document',
+          details: error instanceof Error ? error.message : 'Unknown error'
         }
       });
     }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { formatCurrency } from '../utils/formatters';
 
 interface PieChartData {
   name: string;
@@ -35,6 +36,11 @@ const PieChart: React.FC<PieChartProps> = ({ data, title }) => {
     );
   }
 
+  // Custom label to show only percentage
+  const renderLabel = ({ percent }: any) => {
+    return `${(percent * 100).toFixed(0)}%`;
+  };
+
   return (
     <div className="w-full h-full">
       {title && <h3 className="text-lg font-semibold mb-4">{title}</h3>}
@@ -42,11 +48,11 @@ const PieChart: React.FC<PieChartProps> = ({ data, title }) => {
         <RechartsPieChart>
           <Pie
             data={data}
-            cx="50%"
+            cx="35%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
-            outerRadius={80}
+            label={renderLabel}
+            outerRadius={90}
             fill="#8884d8"
             dataKey="value"
           >
@@ -57,8 +63,13 @@ const PieChart: React.FC<PieChartProps> = ({ data, title }) => {
               />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-          <Legend />
+          <Tooltip formatter={(value: number) => formatCurrency(value)} />
+          <Legend 
+            layout="vertical" 
+            align="right" 
+            verticalAlign="middle"
+            wrapperStyle={{ fontSize: '12px', paddingLeft: '10px' }}
+          />
         </RechartsPieChart>
       </ResponsiveContainer>
     </div>

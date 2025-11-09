@@ -229,7 +229,7 @@ const ImportReview: React.FC<ImportReviewProps> = ({
     const diff = Math.abs(itemsTotal - transaction.amount);
     
     if (diff > 0.01) {
-      return `Items total ($${itemsTotal.toFixed(2)}) must equal transaction amount ($${transaction.amount.toFixed(2)})`;
+      return `Items total (${formatCurrency(itemsTotal)}) must equal transaction amount (${formatCurrency(transaction.amount)})`;
     }
     
     return null;
@@ -334,7 +334,7 @@ const ImportReview: React.FC<ImportReviewProps> = ({
             </p>
             <p className="text-sm text-blue-700 mt-1">
               Net amount: <span className={`font-semibold ${totalAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${Math.abs(totalAmount).toFixed(2)} {totalAmount >= 0 ? '(income)' : '(expense)'}
+                {formatCurrency(Math.abs(totalAmount))} {totalAmount >= 0 ? '(income)' : '(expense)'}
               </span>
             </p>
           </div>
@@ -472,7 +472,7 @@ const ImportReview: React.FC<ImportReviewProps> = ({
                   <td className="px-3 py-4">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-medium ${transaction.type === 'EXPENSE' ? 'text-red-600' : 'text-green-600'}`}>
-                        {transaction.type === 'EXPENSE' ? '-' : '+'}${transaction.amount.toFixed(2)}
+                        {transaction.type === 'EXPENSE' ? '-' : '+'}{formatCurrency(transaction.amount)}
                       </span>
                     </div>
                   </td>
@@ -599,7 +599,7 @@ const ImportReview: React.FC<ImportReviewProps> = ({
                             const itemsTotal = transaction.items?.reduce((sum, item) => sum + item.amount, 0) || 0;
                             return (
                               <span className="text-xs text-gray-600">
-                                Items total: ${itemsTotal.toFixed(2)} / ${transaction.amount.toFixed(2)}
+                                Items total: {formatCurrency(itemsTotal)} / {formatCurrency(transaction.amount)}
                               </span>
                             );
                           })()}

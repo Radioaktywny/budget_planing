@@ -95,6 +95,7 @@ class ReceiptParser:
     def _extract_date(self, text: str) -> Optional[str]:
         """
         Extract date from receipt text.
+        Supports both English and Polish date formats.
         
         Args:
             text: OCR extracted text
@@ -102,8 +103,9 @@ class ReceiptParser:
         Returns:
             Date in YYYY-MM-DD format or None
         """
-        # Common date patterns on receipts
+        # Common date patterns on receipts (including Polish format)
         date_patterns = [
+            r'(\d{1,2}\.\d{1,2}\.\d{2,4})',  # DD.MM.YYYY (Polish)
             r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',  # MM/DD/YYYY or DD/MM/YYYY
             r'(\d{4}[/-]\d{2}[/-]\d{2})',  # YYYY-MM-DD
             r'(\d{2}[/-]\d{2}[/-]\d{2})',  # MM/DD/YY
@@ -120,8 +122,11 @@ class ReceiptParser:
         return None
     
     def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string into YYYY-MM-DD format."""
+        """Parse date string into YYYY-MM-DD format. Supports Polish and English formats."""
         date_formats = [
+            # Polish format (most common)
+            '%d.%m.%Y', '%d.%m.%y',
+            # English formats
             '%m/%d/%Y', '%m-%d-%Y',
             '%d/%m/%Y', '%d-%m-%Y',
             '%m/%d/%y', '%m-%d-%y',

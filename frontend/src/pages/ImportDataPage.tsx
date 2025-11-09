@@ -45,6 +45,8 @@ interface ImportPreview {
 const ImportDataPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
+  const [pastedText, setPastedText] = useState<string>('');
+  const [inputMode, setInputMode] = useState<'file' | 'text'>('text'); // Default to text mode
   const [format, setFormat] = useState<ImportFormat>('json');
   const [isValidating, setIsValidating] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -101,8 +103,10 @@ const ImportDataPage: React.FC = () => {
   };
 
   const handleValidate = async () => {
-    if (!fileContent) {
-      setError('Please select a file first');
+    const content = inputMode === 'text' ? pastedText : fileContent;
+    
+    if (!content) {
+      setError(inputMode === 'text' ? 'Please paste some content first' : 'Please select a file first');
       return;
     }
 
@@ -115,15 +119,15 @@ const ImportDataPage: React.FC = () => {
       
       if (format === 'json') {
         try {
-          data = JSON.parse(fileContent);
+          data = JSON.parse(content);
         } catch (parseError) {
-          setError('Invalid JSON format. Please check your file syntax.');
+          setError('Invalid JSON format. Please check your syntax.');
           setIsValidating(false);
           return;
         }
       } else {
         // For YAML, we'll send the raw content to the backend
-        data = { yaml: fileContent };
+        data = { yaml: content };
       }
 
       // Call validate endpoint
@@ -137,11 +141,22 @@ const ImportDataPage: React.FC = () => {
         setError('Validation failed. Please fix the errors below.');
       }
     } catch (err: any) {
-      if (err.details) {
+      console.error('Validation error:', err);
+      
+      // Check if error has details (validation errors)
+      if (err.details && Array.isArray(err.details)) {
         setValidationErrors(err.details);
         setError('Validation failed. Please fix the errors below.');
+      } else if (err.error?.details && Array.isArray(err.error.details)) {
+        // Handle nested error structure
+        setValidationErrors(err.error.details);
+        setError(err.error.message || 'Validation failed. Please fix the errors below.');
+      } else if (err.errors && Array.isArray(err.errors)) {
+        // Handle direct errors array
+        setValidationErrors(err.errors);
+        setError('Validation failed. Please fix the errors below.');
       } else {
-        setError(err.message || 'Failed to validate file');
+        setError(err.message || err.error?.message || 'Failed to validate file');
       }
     } finally {
       setIsValidating(false);
@@ -149,11 +164,16 @@ const ImportDataPage: React.FC = () => {
   };
 
   const handleImport = async () => {
-    if (!fileContent) {
-      setError('Please select a file first');
+    console.log('handleImport called', { inputMode, format, pastedTextLength: pastedText.length, fileContentLength: fileContent.length });
+    const content = inputMode === 'text' ? pastedText : fileContent;
+    
+    if (!content) {
+      console.log('No content, returning');
+      setError(inputMode === 'text' ? 'Please paste some content first' : 'Please select a file first');
       return;
     }
 
+    console.log('Starting import, content length:', content.length);
     setIsParsing(true);
     setError(null);
     setValidationErrors([]);
@@ -163,14 +183,19 @@ const ImportDataPage: React.FC = () => {
       let response: any;
       
       if (format === 'json') {
-        const data = JSON.parse(fileContent);
+        console.log('Parsing JSON...');
+        const data = JSON.parse(content);
+        console.log('JSON parsed, calling importService.importJSON');
         response = await importService.importJSON(data);
+        console.log('Import response received:', response);
       } else {
-        response = await importService.importYAML(fileContent);
+        response = await importService.importYAML(content);
       }
 
       // Extract preview data
       const preview: ImportPreview = response.preview || response;
+      console.log('Preview data:', preview);
+      console.log('Transactions count:', preview.transactions?.length);
       
       // Convert to review format
       const reviewTxns: ImportReviewTransaction[] = preview.transactions.map((t, index) => ({
@@ -199,14 +224,28 @@ const ImportDataPage: React.FC = () => {
         expanded: false,
       }));
       
+      console.log('Review transactions created:', reviewTxns.length);
       setReviewTransactions(reviewTxns);
       setWarnings(preview.warnings || []);
+      console.log('State updated, should show ImportReview now');
+      
+      // If no transactions but there are warnings, show error
+      if (reviewTxns.length === 0 && preview.warnings && preview.warnings.length > 0) {
+        setError('No transactions could be imported. Please check the warnings below.');
+      }
     } catch (err: any) {
-      if (err.details) {
+      console.error('Import error:', err);
+      
+      // Check if error has details (validation errors)
+      if (err.details && Array.isArray(err.details)) {
         setValidationErrors(err.details);
-        setError('Import failed. Please fix the errors below.');
+        setError('Import failed. Please fix the validation errors below.');
+      } else if (err.error?.details && Array.isArray(err.error.details)) {
+        // Handle nested error structure
+        setValidationErrors(err.error.details);
+        setError(err.error.message || 'Import failed. Please fix the validation errors below.');
       } else {
-        setError(err.message || 'Failed to import file');
+        setError(err.message || err.error?.message || 'Failed to import file');
       }
     } finally {
       setIsParsing(false);
@@ -230,31 +269,34 @@ const ImportDataPage: React.FC = () => {
       let successCount = 0;
       
       for (const transaction of transactions) {
+        // Convert date from YYYY-MM-DD to ISO datetime
+        const dateTime = new Date(transaction.date + 'T12:00:00').toISOString();
+        
         if (transaction.split && transaction.items && transaction.items.length > 0) {
           // Handle split transactions
           await transactionService.createSplit({
-            date: transaction.date,
+            date: dateTime,
             amount: transaction.amount,
             description: transaction.description,
             accountId: transaction.accountId!,
             items: transaction.items.map(item => ({
               amount: item.amount,
               description: item.description,
-              categoryId: item.categoryId,
-              notes: item.notes,
+              categoryId: item.categoryId || undefined,
+              notes: item.notes || undefined,
             })),
           });
           successCount++;
         } else {
           // Handle regular transactions
           await transactionService.create({
-            date: transaction.date,
+            date: dateTime,
             amount: transaction.amount,
             type: transaction.type,
             description: transaction.description,
-            notes: transaction.notes,
+            notes: transaction.notes || undefined,
             accountId: transaction.accountId!,
-            categoryId: transaction.categoryId,
+            categoryId: transaction.categoryId || undefined,
             tagIds: transaction.tagIds,
           });
           successCount++;
@@ -287,6 +329,7 @@ const ImportDataPage: React.FC = () => {
   const handleReset = () => {
     setSelectedFile(null);
     setFileContent('');
+    setPastedText('');
     setValidationErrors([]);
     setReviewTransactions([]);
     setWarnings([]);
@@ -376,48 +419,130 @@ const ImportDataPage: React.FC = () => {
             </div>
           )}
 
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          {/* Input Mode Toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => {
+                setInputMode('text');
+                setSelectedFile(null);
+                setFileContent('');
+              }}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                inputMode === 'text'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Paste Text
+            </button>
+            <button
+              onClick={() => {
+                setInputMode('file');
+                setPastedText('');
+              }}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                inputMode === 'file'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
               Upload File
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="file"
-                accept=".json,.yaml,.yml"
-                onChange={handleFileSelect}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-lg file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100
-                  cursor-pointer"
-              />
-              {selectedFile && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
-                    Format: <span className="font-medium uppercase">{format}</span>
-                  </span>
-                </div>
-              )}
-            </div>
-            {selectedFile && (
-              <p className="text-xs text-gray-500 mt-1">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
-              </p>
-            )}
+            </button>
           </div>
 
+          {/* Format Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Format
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFormat('json')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  format === 'json'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                JSON
+              </button>
+              <button
+                onClick={() => setFormat('yaml')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  format === 'yaml'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                YAML
+              </button>
+            </div>
+          </div>
+
+          {/* Text Input */}
+          {inputMode === 'text' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paste {format.toUpperCase()} Content
+              </label>
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder={`Paste your ${format.toUpperCase()} content here...`}
+                className="w-full h-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+              {pastedText && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {pastedText.length} characters
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* File Upload */}
+          {inputMode === 'file' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload File
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  accept=".json,.yaml,.yml"
+                  onChange={handleFileSelect}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100
+                    cursor-pointer"
+                />
+                {selectedFile && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">
+                      Format: <span className="font-medium uppercase">{format}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+              {selectedFile && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Action Buttons */}
-          {selectedFile && (
+          {((inputMode === 'file' && selectedFile) || (inputMode === 'text' && pastedText)) && (
             <div className="flex gap-3">
               <button
                 onClick={handleValidate}
                 disabled={isValidating || isParsing}
                 className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isValidating ? 'Validating...' : 'Validate File'}
+                {isValidating ? 'Validating...' : 'Validate'}
               </button>
               <button
                 onClick={handleImport}

@@ -5,7 +5,7 @@ import { ApiError } from '../types';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
 
 // Retry configuration
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 0; // Disabled retries temporarily for debugging
 const RETRY_DELAY = 1000; // 1 second
 const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504];
 
@@ -15,7 +15,7 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds
+  timeout: 300000, // 300 seconds (5 minutes) - increased for AI PDF parsing
 });
 
 // Retry helper function
@@ -60,8 +60,12 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const config = error.config as any;
     
-    // Retry logic
-    if (config && shouldRetry(error)) {
+    // Skip retries for document uploads (they take a long time with AI processing)
+    const isDocumentUpload = config?.url?.includes('/documents/upload') || 
+                            config?.url?.includes('/import/');
+    
+    // Retry logic (but not for document uploads)
+    if (config && shouldRetry(error) && !isDocumentUpload) {
       const retryCount = config.retryCount || 0;
       
       if (retryCount < MAX_RETRIES) {

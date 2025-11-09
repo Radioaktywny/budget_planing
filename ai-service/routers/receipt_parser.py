@@ -3,6 +3,8 @@ Router for receipt OCR parsing endpoints.
 """
 import os
 import tempfile
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from schemas import ParseReceiptResponse, TransactionData
@@ -10,6 +12,9 @@ from parsers.receipt_parser import ReceiptParser
 
 router = APIRouter()
 receipt_parser = ReceiptParser()
+
+# Thread pool for running blocking operations
+executor = ThreadPoolExecutor(max_workers=4)
 
 
 @router.post("/receipt", response_model=ParseReceiptResponse)
@@ -41,8 +46,13 @@ async def parse_receipt(file: UploadFile = File(...)):
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Parse receipt
-        result = receipt_parser.parse_receipt(tmp_file_path)
+        # Parse receipt in a thread pool to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            receipt_parser.parse_receipt,
+            tmp_file_path
+        )
         
         # Convert transaction data
         transaction_data = result.get('transaction')

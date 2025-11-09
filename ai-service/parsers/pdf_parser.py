@@ -11,14 +11,18 @@ import pdfplumber
 class PDFParser:
     """Parser for bank statement PDFs."""
     
-    # Common transaction patterns
+    # Common transaction patterns (supports both English and Polish formats)
     TRANSACTION_PATTERNS = [
+        # Polish date format: DD.MM.YYYY with amount (comma or period decimal)
+        r'(\d{1,2}\.\d{1,2}\.\d{2,4})\s+(.+?)\s+([+-]?\s*[\d\s]+[,.]?\d{0,2})\s*(?:PLN|zł)?',
         # Date Amount Description pattern (MM/DD/YYYY or DD/MM/YYYY)
         r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s+([+-]?\$?\s*[\d,]+\.?\d*)\s+(.+?)(?=\d{1,2}[/-]|\n|$)',
         # Date Description Amount pattern
         r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s+(.+?)\s+([+-]?\$?\s*[\d,]+\.?\d{2})',
         # YYYY-MM-DD format
         r'(\d{4}-\d{2}-\d{2})\s+(.+?)\s+([+-]?\$?\s*[\d,]+\.?\d{2})',
+        # Polish format with spaces in amounts: DD.MM.YYYY Description Amount
+        r'(\d{1,2}\.\d{1,2}\.\d{4})\s+(.+?)\s+([+-]?\s*[\d\s]+,\d{2})',
     ]
     
     def __init__(self):
@@ -174,6 +178,7 @@ class PDFParser:
     def _parse_date(self, date_str: str) -> Optional[str]:
         """
         Parse date string into YYYY-MM-DD format.
+        Supports both English and Polish date formats.
         
         Args:
             date_str: Date string in various formats
@@ -182,6 +187,9 @@ class PDFParser:
             Date in YYYY-MM-DD format or None
         """
         date_formats = [
+            # Polish format (most common)
+            '%d.%m.%Y', '%d.%m.%y',
+            # English formats
             '%m/%d/%Y', '%m-%d-%Y',
             '%d/%m/%Y', '%d-%m-%Y',
             '%m/%d/%y', '%m-%d-%y',
@@ -201,6 +209,7 @@ class PDFParser:
     def _parse_amount(self, amount_str: str) -> Optional[float]:
         """
         Parse amount string into float.
+        Supports both English (period) and Polish (comma) decimal separators.
         
         Args:
             amount_str: Amount string with possible currency symbols
@@ -209,18 +218,72 @@ class PDFParser:
             Float amount or None
         """
         try:
-            # Remove currency symbols, spaces, and commas
-            cleaned = amount_str.replace('$', '').replace(',', '').replace(' ', '').strip()
+            # Remove currency symbols (both $ and PLN/zł)
+            cleaned = amount_str.replace('$', '').replace('PLN', '').replace('zł', '').strip()
+            
+            # Remove spaces (Polish format often has spaces in large numbers)
+            cleaned = cleaned.replace(' ', '')
+            
+            # Determine if using comma or period as decimal separator
+            # Polish uses comma (,) as decimal separator and space/period as thousands separator
+            # English uses period (.) as decimal separator and comma as thousands separator
+            
+            has_comma = ',' in cleaned
+            has_period = '.' in cleaned
+            
+            if has_comma and has_period:
+                # Both present - determine which is decimal separator
+                comma_pos = cleaned.rfind(',')
+                period_pos = cleaned.rfind('.')
+                
+                if comma_pos > period_pos:
+                    # Comma is decimal separator (Polish format: 1.234,56)
+                    cleaned = cleaned.replace('.', '').replace(',', '.')
+                else:
+                    # Period is decimal separator (English format: 1,234.56)
+                    cleaned = cleaned.replace(',', '')
+            elif has_comma:
+                # Only comma present
+                # Check if it's followed by exactly 2 digits (decimal separator)
+                # or more than 2 digits (thousands separator)
+                comma_pos = cleaned.rfind(',')
+                after_comma = cleaned[comma_pos + 1:]
+                
+                if len(after_comma) == 2 and after_comma.isdigit():
+                    # Polish decimal separator: 149,06
+                    cleaned = cleaned.replace(',', '.')
+                elif len(after_comma) > 2:
+                    # Thousands separator: 1,234 (remove it)
+                    cleaned = cleaned.replace(',', '')
+                else:
+                    # Assume decimal separator
+                    cleaned = cleaned.replace(',', '.')
+            elif has_period:
+                # Only period present
+                # Check if it's followed by exactly 2 digits (decimal separator)
+                period_pos = cleaned.rfind('.')
+                after_period = cleaned[period_pos + 1:]
+                
+                if len(after_period) == 2 and after_period.isdigit():
+                    # Decimal separator: 149.06
+                    pass  # Keep as is
+                elif len(after_period) > 2:
+                    # Thousands separator: 1.234 (remove it)
+                    cleaned = cleaned.replace('.', '')
+                # else keep as is
             
             # Handle negative amounts (withdrawals/expenses)
+            is_negative = False
             if cleaned.startswith('-') or cleaned.startswith('('):
-                cleaned = cleaned.replace('(', '').replace(')', '')
-                amount = -float(cleaned)
+                is_negative = True
+                cleaned = cleaned.replace('(', '').replace(')', '').replace('-', '').strip()
             elif cleaned.startswith('+'):
-                amount = float(cleaned[1:])
-            else:
-                # Assume expenses are negative by default if no sign
-                amount = float(cleaned)
+                cleaned = cleaned[1:].strip()
+            
+            amount = float(cleaned)
+            
+            if is_negative:
+                amount = -amount
             
             return amount
         except ValueError:

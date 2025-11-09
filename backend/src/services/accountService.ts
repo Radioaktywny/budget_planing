@@ -11,11 +11,15 @@ export const CreateAccountSchema = z.object({
   name: z.string().min(1, 'Account name is required'),
   type: AccountTypeSchema,
   userId: z.string().uuid(),
+  initialBalance: z.number().optional(),
+  initialBalanceDate: z.string().datetime().optional(),
 });
 
 export const UpdateAccountSchema = z.object({
   name: z.string().min(1, 'Account name is required').optional(),
   type: AccountTypeSchema.optional(),
+  initialBalance: z.number().optional(),
+  initialBalanceDate: z.string().datetime().optional(),
 });
 
 export type CreateAccountInput = z.infer<typeof CreateAccountSchema>;
@@ -72,13 +76,15 @@ export async function createAccount(data: CreateAccountInput): Promise<Account> 
     throw new Error('An account with this name already exists');
   }
 
-  // Create account with initial balance of 0
+  // Create account with initial balance
   return await prisma.account.create({
     data: {
       name: validated.name,
       type: validated.type,
       userId: validated.userId,
-      balance: 0,
+      balance: validated.initialBalance || 0,
+      initialBalance: validated.initialBalance || 0,
+      initialBalanceDate: validated.initialBalanceDate ? new Date(validated.initialBalanceDate) : null,
     },
   });
 }
@@ -115,10 +121,38 @@ export async function updateAccount(
     }
   }
 
-  // Update account
+  // If updating initial balance, recalculate current balance
+  let newBalance = account.balance;
+  if (validated.initialBalance !== undefined) {
+    // Get all transactions for this account
+    const transactions = await prisma.transaction.findMany({
+      where: { accountId },
+      select: {
+        amount: true,
+        type: true,
+      },
+    });
+
+    // Calculate balance: initialBalance + sum of transactions
+    const transactionSum = transactions.reduce((sum, t) => {
+      if (t.type === 'INCOME') {
+        return sum + t.amount;
+      } else if (t.type === 'EXPENSE') {
+        return sum - t.amount;
+      }
+      return sum; // TRANSFER handled separately
+    }, 0);
+
+    newBalance = validated.initialBalance + transactionSum;
+  }
+
+  // Update account with recalculated balance
   return await prisma.account.update({
     where: { id: accountId },
-    data: validated,
+    data: {
+      ...validated,
+      balance: newBalance,
+    },
   });
 }
 

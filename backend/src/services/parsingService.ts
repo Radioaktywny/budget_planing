@@ -3,13 +3,14 @@ import FormData from 'form-data';
 import fs from 'fs';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001';
-const AI_SERVICE_TIMEOUT = parseInt(process.env.AI_SERVICE_TIMEOUT || '30000', 10); // 30 seconds
+// Increased timeout for AI parsing (Gemini can take 30-60 seconds for large PDFs)
+const AI_SERVICE_TIMEOUT = parseInt(process.env.AI_SERVICE_TIMEOUT || '300000', 10); // 300 seconds (5 minutes)
 
 export interface ParsedTransaction {
   date: string;
   amount: number;
   description: string;
-  type: 'income' | 'expense';
+  type: 'INCOME' | 'EXPENSE'; // Uppercase to match backend enum
   category?: string;
   confidence?: number;
 }
@@ -50,11 +51,14 @@ export const parsingService = {
         };
       }
 
+      console.log(`📤 Sending PDF to AI service: ${filePath}`);
+
       // Create form data with file
       const formData = new FormData();
       formData.append('file', fs.createReadStream(filePath));
 
       // Call AI service
+      console.log(`⏱️  Calling AI service with ${AI_SERVICE_TIMEOUT}ms timeout...`);
       const response = await axios.post(
         `${AI_SERVICE_URL}/parse/pdf`,
         formData,
@@ -63,11 +67,18 @@ export const parsingService = {
           timeout: AI_SERVICE_TIMEOUT
         }
       );
+      console.log(`✅ Received response from AI service`);
 
       if (response.data.success) {
+        // Convert transaction types to uppercase to match backend enum
+        const transactions = (response.data.transactions || []).map((t: any) => ({
+          ...t,
+          type: t.type.toUpperCase() as 'INCOME' | 'EXPENSE'
+        }));
+        
         return {
           success: true,
-          transactions: response.data.transactions || [],
+          transactions,
           message: response.data.message
         };
       } else {
@@ -110,9 +121,15 @@ export const parsingService = {
       );
 
       if (response.data.success) {
+        // Convert transaction type to uppercase if present
+        const transaction = response.data.transaction ? {
+          ...response.data.transaction,
+          type: response.data.transaction.type.toUpperCase() as 'INCOME' | 'EXPENSE'
+        } : undefined;
+        
         return {
           success: true,
-          transaction: response.data.transaction,
+          transaction,
           items: response.data.items || [],
           message: response.data.message
         };
@@ -145,7 +162,7 @@ export const parsingService = {
   /**
    * Handle parsing errors with appropriate fallback
    */
-  handleParsingError(error: unknown, operation: string): { success: false; transactions: []; error: string } {
+  handleParsingError(error: unknown, operation: string): any {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<{ detail?: string }>;
       
@@ -166,10 +183,12 @@ export const parsingService = {
       }
       
       if (axiosError.response) {
+        const errorMessage = axiosError.response.data?.detail || axiosError.message;
+        console.error(`${operation} error response:`, axiosError.response.data);
         return {
           success: false,
           transactions: [],
-          error: `AI service error: ${axiosError.response.data?.detail || axiosError.message}`
+          error: `AI service error: ${errorMessage}`
         };
       }
     }

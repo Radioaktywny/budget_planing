@@ -9,7 +9,7 @@ export const ImportTransactionItemSchema = z.object({
   amount: z.number().positive('Item amount must be greater than 0'),
   description: z.string().min(1, 'Item description is required'),
   category: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
 });
 
 export const ImportTransactionSchema = z.object({
@@ -21,7 +21,7 @@ export const ImportTransactionSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   category: z.string().optional(),
   account: z.string().min(1, 'Account name is required'),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   tags: z.array(z.string()).optional(),
   split: z.boolean().optional(),
   items: z.array(ImportTransactionItemSchema).optional(),
@@ -332,13 +332,19 @@ export async function processImportData(
     }
     
     // Convert type to uppercase enum
-    const type = transaction.type.toUpperCase() as 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    let type = transaction.type.toUpperCase() as 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    
+    // Auto-detect transfers based on category name
+    if (transaction.category && transaction.category.toLowerCase().includes('transfer')) {
+      type = 'TRANSFER';
+    }
     
     // Process regular transaction
     if (!transaction.split) {
       let categoryId: string | undefined;
       
-      if (transaction.category) {
+      // Don't assign category to transfers
+      if (transaction.category && type !== 'TRANSFER') {
         categoryId = await matchOrCreateCategory(transaction.category, userId);
       }
       
@@ -359,7 +365,7 @@ export async function processImportData(
         categoryId,
         account: transaction.account,
         accountId,
-        notes: transaction.notes,
+        notes: transaction.notes || undefined,
         tags: transaction.tags,
         tagIds,
       });
@@ -383,7 +389,7 @@ export async function processImportData(
             description: item.description,
             category: item.category,
             categoryId,
-            notes: item.notes,
+            notes: (item.notes ?? undefined) as string | undefined,
           };
         })
       );
@@ -395,7 +401,7 @@ export async function processImportData(
         description: transaction.description,
         account: transaction.account,
         accountId,
-        notes: transaction.notes,
+        notes: transaction.notes || undefined,
         split: true,
         items,
       });

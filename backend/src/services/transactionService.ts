@@ -10,11 +10,15 @@ const prisma = new PrismaClient();
 export const TransactionTypeSchema = z.enum(['INCOME', 'EXPENSE', 'TRANSFER']);
 
 export const CreateTransactionSchema = z.object({
-  date: z.string().datetime().or(z.date()),
+  date: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]),
   amount: z.number().positive('Amount must be greater than 0'),
   type: TransactionTypeSchema,
   description: z.string().min(1, 'Description is required'),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid account ID'),
   categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
   userId: z.string().uuid('Invalid user ID'),
@@ -22,7 +26,11 @@ export const CreateTransactionSchema = z.object({
 });
 
 export const UpdateTransactionSchema = z.object({
-  date: z.string().datetime().or(z.date()).optional(),
+  date: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]).optional(),
   amount: z.number().positive('Amount must be greater than 0').optional(),
   type: TransactionTypeSchema.optional(),
   description: z.string().min(1, 'Description is required').optional(),
@@ -33,10 +41,14 @@ export const UpdateTransactionSchema = z.object({
 });
 
 export const CreateTransferSchema = z.object({
-  date: z.string().datetime().or(z.date()),
+  date: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]),
   amount: z.number().positive('Amount must be greater than 0'),
   description: z.string().min(1, 'Description is required'),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   fromAccountId: z.string().uuid('Invalid from account ID'),
   toAccountId: z.string().uuid('Invalid to account ID'),
   userId: z.string().uuid('Invalid user ID'),
@@ -46,16 +58,20 @@ export const SplitItemSchema = z.object({
   amount: z.number().positive('Item amount must be greater than 0'),
   description: z.string().min(1, 'Item description is required'),
   categoryId: z.string().uuid('Invalid category ID').optional().nullable(),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   tagIds: z.array(z.string().uuid()).optional(),
 });
 
 export const CreateSplitTransactionSchema = z.object({
-  date: z.string().datetime().or(z.date()),
+  date: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]),
   amount: z.number().positive('Amount must be greater than 0'),
   type: TransactionTypeSchema,
   description: z.string().min(1, 'Description is required'),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid account ID'),
   userId: z.string().uuid('Invalid user ID'),
   items: z.array(SplitItemSchema).min(1, 'At least one split item is required'),
@@ -1348,7 +1364,11 @@ export async function getSplitTransactionItems(
 // Import Review Service Functions
 
 export const BulkTransactionItemSchema = z.object({
-  date: z.string().datetime().or(z.date()),
+  date: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]),
   amount: z.number().positive('Amount must be greater than 0'),
   type: TransactionTypeSchema,
   description: z.string().min(1, 'Description is required'),

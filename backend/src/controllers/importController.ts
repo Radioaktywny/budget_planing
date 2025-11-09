@@ -10,13 +10,34 @@ export async function importJSON(req: Request, res: Response): Promise<void> {
   try {
     const userId = getUserId(req);
     
-    // Get JSON string from request body
-    const jsonString = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    // Handle both string and object bodies
+    let data: any;
+    if (typeof req.body === 'string') {
+      // If body is a string, parse it
+      try {
+        data = JSON.parse(req.body);
+      } catch (parseError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid JSON format',
+            details: [{ field: 'json', message: 'Failed to parse JSON string' }],
+          },
+        });
+        return;
+      }
+    } else {
+      // If body is already an object, use it directly
+      data = req.body;
+    }
     
-    // Parse and validate JSON
-    const validationResult = importService.parseJSON(jsonString);
+    // Validate the data
+    const validationResult = importService.validateImportData(data);
     
     if (!validationResult.valid) {
+      console.error('❌ JSON Import Validation Failed:');
+      console.error('Errors:', JSON.stringify(validationResult.errors, null, 2));
+      console.error('Received data:', JSON.stringify(data, null, 2));
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
@@ -173,7 +194,7 @@ export async function validateImport(req: Request, res: Response): Promise<void>
     const contentType = req.headers['content-type'] || '';
     let validationResult: importService.ValidationResult;
     
-    if (contentType.includes('yaml') || contentType.includes('yml')) {
+    if (contentType.includes('yaml') || contentType.includes('yml') || req.body.yaml) {
       // YAML format
       const yamlString = typeof req.body === 'string' ? req.body : req.body.yaml;
       if (!yamlString) {
@@ -188,17 +209,35 @@ export async function validateImport(req: Request, res: Response): Promise<void>
       validationResult = importService.parseYAML(yamlString);
     } else {
       // JSON format (default)
-      const jsonString = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-      validationResult = importService.parseJSON(jsonString);
+      let data: any;
+      if (typeof req.body === 'string') {
+        // If body is a string, parse it
+        try {
+          data = JSON.parse(req.body);
+        } catch (parseError) {
+          res.status(400).json({
+            valid: false,
+            errors: [{ field: 'json', message: 'Invalid JSON format' }],
+          });
+          return;
+        }
+      } else {
+        // If body is already an object, use it directly
+        data = req.body;
+      }
+      validationResult = importService.validateImportData(data);
     }
     
     if (validationResult.valid) {
+      console.log('✅ Validation successful:', validationResult.data?.transactions.length || 0, 'transactions');
       res.json({
         valid: true,
         message: 'Import data is valid',
         transactionCount: validationResult.data?.transactions.length || 0,
       });
     } else {
+      console.error('❌ Validation Failed:');
+      console.error('Errors:', JSON.stringify(validationResult.errors, null, 2));
       res.status(400).json({
         valid: false,
         errors: validationResult.errors,
