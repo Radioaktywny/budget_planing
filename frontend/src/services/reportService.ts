@@ -10,10 +10,12 @@ import {
 export const reportService = {
   // Get summary report
   getSummary: async (startDate: string, endDate: string): Promise<ReportSummary> => {
-    const response = await apiClient.get<ReportSummary>('/reports/summary', {
-      params: { startDate, endDate },
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
+    const response = await apiClient.get<{ success: boolean; data: ReportSummary }>('/reports/summary', {
+      params: { userId, startDate, endDate },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Get category breakdown
@@ -22,33 +24,41 @@ export const reportService = {
     endDate: string,
     type?: 'INCOME' | 'EXPENSE'
   ): Promise<CategoryBreakdown[]> => {
-    const response = await apiClient.get<CategoryBreakdown[]>('/reports/category-breakdown', {
-      params: { startDate, endDate, type },
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
+    const response = await apiClient.get<{ success: boolean; data: CategoryBreakdown[] }>('/reports/category-breakdown', {
+      params: { userId, startDate, endDate, type },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Get net balance over time
   getNetBalance: async (startDate: string, endDate: string): Promise<NetBalancePoint[]> => {
-    const response = await apiClient.get<NetBalancePoint[]>('/reports/net-balance', {
-      params: { startDate, endDate },
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
+    const response = await apiClient.get<{ success: boolean; data: NetBalancePoint[] }>('/reports/net-balance', {
+      params: { userId, startDate, endDate },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Get comprehensive report
   getComprehensive: async (startDate: string, endDate: string): Promise<ComprehensiveReport> => {
-    const response = await apiClient.get<ComprehensiveReport>('/reports/comprehensive', {
-      params: { startDate, endDate },
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
+    const response = await apiClient.get<{ success: boolean; data: ComprehensiveReport }>('/reports/comprehensive', {
+      params: { userId, startDate, endDate },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Export PDF report
   exportPDF: async (startDate: string, endDate: string): Promise<void> => {
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
     const response = await apiClient.post(
       '/reports/export/pdf',
-      { startDate, endDate },
+      { userId, startDate, endDate },
       { responseType: 'blob' }
     );
     
@@ -65,9 +75,11 @@ export const reportService = {
 
   // Export Excel report
   exportExcel: async (startDate: string, endDate: string): Promise<void> => {
+    // TODO: Replace with actual user authentication
+    const userId = 'c33d4026-e045-4e76-a586-9b8f58d669a1';
     const response = await apiClient.post(
       '/reports/export/excel',
-      { startDate, endDate },
+      { userId, startDate, endDate },
       { responseType: 'blob' }
     );
     

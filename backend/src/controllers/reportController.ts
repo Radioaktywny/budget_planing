@@ -72,7 +72,16 @@ export async function getMonthlySummary(req: Request, res: Response): Promise<vo
     }
 
     // Get monthly summary
-    const summary = await reportService.calculateMonthlySummary(userId, start, end);
+    const monthlySummaries = await reportService.calculateMonthlySummary(userId, start, end);
+
+    // Aggregate monthly summaries into a single summary
+    const summary = {
+      totalIncome: monthlySummaries.reduce((sum, m) => sum + m.income, 0),
+      totalExpenses: monthlySummaries.reduce((sum, m) => sum + m.expenses, 0),
+      netBalance: monthlySummaries.reduce((sum, m) => sum + m.netBalance, 0),
+      startDate: startDate,
+      endDate: endDate,
+    };
 
     res.json({
       success: true,

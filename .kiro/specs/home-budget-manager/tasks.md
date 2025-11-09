@@ -951,6 +951,7 @@ all transaction data
 
 
 
+
   - Create ImportDataPage component
   - Add file upload for JSON/YAML files
   - Show schema documentation
@@ -958,15 +959,24 @@ all transaction data
   - Integrate with ImportReview component
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 28. Implement dashboard and charts
-  - [ ] 28.1 Create chart components
+- [x] 28. Implement dashboard and charts
+
+
+
+
+
+
+  - [x] 28.1 Create chart components
+
     - Create PieChart component for category breakdown
     - Create BarChart component for monthly comparison
     - Create LineChart component for net balance trend
     - Add responsive sizing
     - _Requirements: 11.3, 12.1, 12.2, 13.2_
   
-  - [ ] 28.2 Create DashboardPage component
+
+  - [x] 28.2 Create DashboardPage component
+
     - Display total balance across all accounts
     - Show current month income, expenses, net balance
     - Add expense breakdown pie chart
