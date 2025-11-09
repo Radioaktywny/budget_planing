@@ -70,6 +70,39 @@ const ImportReview: React.FC<ImportReviewProps> = ({
     setTransactions(transactionsWithIds);
   }, [initialTransactions]);
 
+  // Auto-match category and account names to IDs
+  useEffect(() => {
+    if (categories.length === 0 || accounts.length === 0) return;
+
+    setTransactions(prevTransactions =>
+      prevTransactions.map(t => {
+        const updates: Partial<ImportReviewTransaction> = {};
+
+        // Match category name to ID
+        if (t.category && !t.categoryId) {
+          const matchedCategory = categories.find(
+            c => c.name.toLowerCase() === t.category?.toLowerCase()
+          );
+          if (matchedCategory) {
+            updates.categoryId = matchedCategory.id;
+          }
+        }
+
+        // Match account name to ID
+        if (t.account && !t.accountId) {
+          const matchedAccount = accounts.find(
+            a => a.name.toLowerCase() === t.account?.toLowerCase()
+          );
+          if (matchedAccount) {
+            updates.accountId = matchedAccount.id;
+          }
+        }
+
+        return Object.keys(updates).length > 0 ? { ...t, ...updates } : t;
+      })
+    );
+  }, [categories, accounts]);
+
   const loadCategories = async () => {
     try {
       const data = await categoryService.getAll();

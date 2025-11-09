@@ -72,7 +72,7 @@ const ImportPage: React.FC = () => {
         description: t.description,
         category: t.category,
         categoryId: undefined,
-        account: '', // User needs to select
+        account: t.account || '', // Use AI-detected account or empty
         accountId: undefined,
         notes: undefined,
         selected: true,

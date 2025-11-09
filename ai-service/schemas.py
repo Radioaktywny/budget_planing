@@ -13,6 +13,7 @@ class TransactionData(BaseModel):
     description: str = Field(..., description="Transaction description")
     type: str = Field(default="expense", description="Transaction type: income or expense")
     category: Optional[str] = Field(None, description="Suggested category")
+    account: Optional[str] = Field(None, description="Detected account name")
     confidence: Optional[float] = Field(None, ge=0, le=1, description="Confidence score for category")
 
 

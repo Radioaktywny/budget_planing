@@ -250,6 +250,7 @@ export interface ParsedTransaction {
   amount: number;
   description: string;
   category?: string;
+  account?: string;
   confidence?: number;
 }
 

@@ -29,13 +29,14 @@ class GeminiPDFParser:
         # This is the latest free tier model available
         self.model = genai.GenerativeModel('models/gemini-2.5-flash')
     
-    def parse_pdf(self, file_path: str, user_categories: Optional[List[str]] = None) -> List[Dict]:
+    def parse_pdf(self, file_path: str, user_categories: Optional[List[str]] = None, user_accounts: Optional[List[str]] = None) -> List[Dict]:
         """
         Parse PDF file and extract transactions using Gemini AI.
         
         Args:
             file_path: Path to PDF file
             user_categories: List of user's existing categories for better categorization
+            user_accounts: List of user's existing accounts for account detection
             
         Returns:
             List of transaction dictionaries
@@ -51,7 +52,7 @@ class GeminiPDFParser:
         print(f"📄 Extracted {len(text)} characters from PDF")
         
         # Use Gemini to parse transactions
-        transactions = self._parse_with_gemini(text, user_categories)
+        transactions = self._parse_with_gemini(text, user_categories, user_accounts)
         
         print(f"✓ Gemini AI parsed {len(transactions)} transactions")
         
@@ -85,19 +86,20 @@ class GeminiPDFParser:
         
         return '\n\n'.join(text_parts)
     
-    def _parse_with_gemini(self, text: str, user_categories: Optional[List[str]] = None) -> List[Dict]:
+    def _parse_with_gemini(self, text: str, user_categories: Optional[List[str]] = None, user_accounts: Optional[List[str]] = None) -> List[Dict]:
         """
         Use Gemini AI to parse transactions from text.
         
         Args:
             text: Extracted PDF text
             user_categories: List of user's existing categories
+            user_accounts: List of user's existing accounts
             
         Returns:
             List of transaction dictionaries
         """
         # Build the prompt
-        prompt = self._build_prompt(text, user_categories)
+        prompt = self._build_prompt(text, user_categories, user_accounts)
         
         try:
             # Call Gemini API
@@ -116,16 +118,35 @@ class GeminiPDFParser:
             
             response_text = response_text.strip()
             
+            # Log full Gemini response
+            print(f"🔍 GEMINI FULL RESPONSE:")
+            print(f"{'='*80}")
+            print(response_text[:2000])  # First 2000 chars
+            print(f"{'='*80}")
+            
             # Parse JSON
             data = json.loads(response_text)
             
+            # Extract account name if provided
+            account_name = data.get('account')
+            if account_name:
+                print(f"🏦 Detected account: {account_name}")
+            
             # Extract transactions
             transactions = data.get('transactions', [])
+            
+            # Debug: Check first transaction
+            if transactions and len(transactions) > 0:
+                first_trans = transactions[0]
+                print(f"📝 Sample transaction: category='{first_trans.get('category')}', account='{first_trans.get('account')}')")
             
             # Validate and clean transactions
             validated_transactions = []
             for trans in transactions:
                 if self._validate_transaction(trans):
+                    # Add account name to each transaction if detected
+                    if account_name:
+                        trans['account'] = account_name
                     validated_transactions.append(trans)
             
             return validated_transactions
@@ -138,14 +159,21 @@ class GeminiPDFParser:
             print(f"Gemini API error: {e}")
             return []
     
-    def _build_prompt(self, text: str, user_categories: Optional[List[str]] = None) -> str:
+    def _build_prompt(self, text: str, user_categories: Optional[List[str]] = None, user_accounts: Optional[List[str]] = None) -> str:
         """Build the prompt for Gemini AI."""
         
         categories_text = ""
         if user_categories and len(user_categories) > 0:
             categories_text = f"""
-Available categories (use these if applicable):
+Available categories (MUST use one of these - choose the most appropriate):
 {', '.join(user_categories)}
+"""
+        
+        accounts_text = ""
+        if user_accounts and len(user_accounts) > 0:
+            accounts_text = f"""
+Available accounts (try to detect which account this statement belongs to):
+{', '.join(user_accounts)}
 """
         
         prompt = f"""You are a bank statement parser. Extract all transactions from the following bank statement text.
@@ -161,17 +189,18 @@ IMPORTANT INSTRUCTIONS:
 6. Negative amounts or withdrawals in the statement = "expense" type with positive amount
 7. Positive amounts or deposits in the statement = "income" type with positive amount
 8. If a transaction mentions "przelew" (transfer), "wpłata" (deposit), or "wypłata" (withdrawal), categorize accordingly
-{categories_text}
+{categories_text}{accounts_text}
 
 Return ONLY a JSON object with this exact structure (no additional text):
 {{
+  "account": "Account name from available accounts or null",
   "transactions": [
     {{
       "date": "YYYY-MM-DD",
       "amount": 149.06,
       "description": "Transaction description",
       "type": "expense",
-      "category": "Category name or null"
+      "category": "Category name from available categories or null"
     }}
   ]
 }}
@@ -179,7 +208,7 @@ Return ONLY a JSON object with this exact structure (no additional text):
 Bank statement text:
 {text}
 
-Remember: Return ONLY the JSON object, nothing else."""
+Remember: Return ONLY the JSON object, nothing else. Use ONLY categories from the provided list."""
         
         return prompt
     

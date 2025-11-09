@@ -220,10 +220,25 @@ export const documentController = {
         return;
       }
 
+      // Get user's categories and accounts for better AI parsing
+      const { getAllCategories } = await import('../services/categoryService');
+      const { getAllAccounts } = await import('../services/accountService');
+      
+      // Get current user ID from request context
+      const userId = (req as any).userId || 'default-user-id';
+      
+      const categories = await getAllCategories(userId);
+      const accounts = await getAllAccounts(userId);
+      
+      const categoryNames = categories.map((c: any) => c.name);
+      const accountNames = accounts.map((a: any) => a.name);
+      
+      console.log(`📋 Found ${categoryNames.length} categories and ${accountNames.length} accounts for AI`);
+
       // Parse document based on type
       let result;
       if (document.mimeType === 'application/pdf') {
-        result = await parsingService.parsePDF(filePath);
+        result = await parsingService.parsePDF(filePath, categoryNames, accountNames);
       } else if (document.mimeType.startsWith('image/')) {
         result = await parsingService.parseReceipt(filePath);
       } else {

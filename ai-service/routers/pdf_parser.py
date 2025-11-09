@@ -5,7 +5,7 @@ import os
 import tempfile
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from typing import List
 
 from schemas import ParsePDFResponse, TransactionData
@@ -20,12 +20,18 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 @router.post("/pdf", response_model=ParsePDFResponse)
-async def parse_pdf(file: UploadFile = File(...)):
+async def parse_pdf(
+    file: UploadFile = File(...),
+    categories: str = Form(""),
+    accounts: str = Form("")
+):
     """
     Parse a bank statement PDF and extract transactions.
     
     Args:
         file: Uploaded PDF file
+        categories: Comma-separated list of existing category names
+        accounts: Comma-separated list of existing account names
         
     Returns:
         ParsePDFResponse with extracted transactions
@@ -45,15 +51,31 @@ async def parse_pdf(file: UploadFile = File(...)):
         
         print(f"📤 Starting PDF parsing for: {file.filename}")
         
+        # Parse categories and accounts
+        category_list = [c.strip() for c in categories.split(',') if c.strip()] if categories else None
+        account_list = [a.strip() for a in accounts.split(',') if a.strip()] if accounts else None
+        
+        if category_list:
+            print(f"📋 Using {len(category_list)} existing categories")
+        if account_list:
+            print(f"🏦 Using {len(account_list)} existing accounts")
+        
         # Parse PDF in a thread pool to avoid blocking the event loop
         loop = asyncio.get_event_loop()
         transactions_data = await loop.run_in_executor(
             executor,
             pdf_parser.parse_pdf,
-            tmp_file_path
+            tmp_file_path,
+            category_list,
+            account_list
         )
         
         print(f"📥 Received {len(transactions_data)} transactions from parser")
+        
+        # Debug: Check first transaction data
+        if transactions_data and len(transactions_data) > 0:
+            first = transactions_data[0]
+            print(f"🔍 First transaction raw: category={first.get('category')}, account={first.get('account')}")
         
         # Convert to TransactionData objects
         transactions = []
@@ -63,7 +85,9 @@ async def parse_pdf(file: UploadFile = File(...)):
                     date=trans['date'],
                     amount=trans['amount'],
                     description=trans['description'],
-                    type=trans['type']
+                    type=trans['type'],
+                    category=trans.get('category'),
+                    account=trans.get('account')
                 )
                 transactions.append(transaction)
             except Exception as e:
@@ -72,6 +96,12 @@ async def parse_pdf(file: UploadFile = File(...)):
                 continue
         
         print(f"✅ Returning {len(transactions)} valid transactions to backend")
+        
+        # Debug: Log first transaction being returned
+        if transactions and len(transactions) > 0:
+            first_tx = transactions[0]
+            print(f"🚀 Sending to backend - First transaction:")
+            print(f"   category={first_tx.category}, account={first_tx.account}")
         
         response = ParsePDFResponse(
             success=True,

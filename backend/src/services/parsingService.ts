@@ -12,6 +12,7 @@ export interface ParsedTransaction {
   description: string;
   type: 'INCOME' | 'EXPENSE'; // Uppercase to match backend enum
   category?: string;
+  account?: string;
   confidence?: number;
 }
 
@@ -40,7 +41,7 @@ export const parsingService = {
   /**
    * Parse a PDF bank statement using the AI service
    */
-  async parsePDF(filePath: string): Promise<ParsePDFResult> {
+  async parsePDF(filePath: string, categories?: string[], accounts?: string[]): Promise<ParsePDFResult> {
     try {
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -56,6 +57,16 @@ export const parsingService = {
       // Create form data with file
       const formData = new FormData();
       formData.append('file', fs.createReadStream(filePath));
+      
+      // Add categories and accounts if provided
+      if (categories && categories.length > 0) {
+        formData.append('categories', categories.join(','));
+        console.log(`📋 Sending ${categories.length} categories to AI`);
+      }
+      if (accounts && accounts.length > 0) {
+        formData.append('accounts', accounts.join(','));
+        console.log(`🏦 Sending ${accounts.length} accounts to AI`);
+      }
 
       // Call AI service
       console.log(`⏱️  Calling AI service with ${AI_SERVICE_TIMEOUT}ms timeout...`);
