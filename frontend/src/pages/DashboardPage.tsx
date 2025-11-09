@@ -111,21 +111,23 @@ const DashboardPage: React.FC = () => {
   }));
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="flex gap-3">
+    <div>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             onClick={() => navigate('/transactions')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm sm:text-base"
           >
-            Add Transaction
+            <span className="sm:hidden">+ Transaction</span>
+            <span className="hidden sm:inline">Add Transaction</span>
           </button>
           <button
             onClick={() => navigate('/import')}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm sm:text-base"
           >
-            Upload Document
+            <span className="sm:hidden">+ Document</span>
+            <span className="hidden sm:inline">Upload Document</span>
           </button>
         </div>
       </div>
@@ -174,23 +176,23 @@ const DashboardPage: React.FC = () => {
       {/* Charts and Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expense Breakdown Chart */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Expense Breakdown</h2>
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Expense Breakdown</h2>
           {chartData.length > 0 ? (
-            <div className="h-80">
+            <div className="h-64 sm:h-80">
               <PieChart data={chartData} />
             </div>
           ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">
+            <div className="h-64 sm:h-80 flex items-center justify-center text-gray-500">
               No expenses this month
             </div>
           )}
         </div>
 
         {/* Recent Transactions */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Recent Transactions</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">Recent Transactions</h2>
             <button
               onClick={() => navigate('/transactions')}
               className="text-sm text-blue-600 hover:text-blue-700"
@@ -203,27 +205,27 @@ const DashboardPage: React.FC = () => {
               recentTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex justify-between items-center py-3 border-b last:border-b-0"
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 border-b last:border-b-0 gap-2"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{transaction.description}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{transaction.description}</p>
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
                       <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
                       {transaction.category && (
                         <>
-                          <span className="text-gray-300">•</span>
-                          <p className="text-xs text-gray-500">{transaction.category.name}</p>
+                          <span className="text-gray-300 hidden sm:inline">•</span>
+                          <p className="text-xs text-gray-500 truncate">{transaction.category.name}</p>
                         </>
                       )}
                       {transaction.account && (
                         <>
-                          <span className="text-gray-300">•</span>
-                          <p className="text-xs text-gray-500">{transaction.account.name}</p>
+                          <span className="text-gray-300 hidden sm:inline">•</span>
+                          <p className="text-xs text-gray-500 truncate">{transaction.account.name}</p>
                         </>
                       )}
                     </div>
                   </div>
-                  <p className={`font-semibold ${getTransactionTypeColor(transaction.type)}`}>
+                  <p className={`font-semibold whitespace-nowrap ${getTransactionTypeColor(transaction.type)}`}>
                     {transaction.type === 'INCOME' ? '+' : transaction.type === 'EXPENSE' ? '-' : ''}
                     {formatCurrency(transaction.amount)}
                   </p>

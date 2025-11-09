@@ -102,22 +102,24 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="inline-block min-w-full align-middle">
+          <div className="overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-8 px-3 py-3"></th>
+              <th className="w-8 px-2 sm:px-3 py-3"></th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleHeaderClick('date')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center whitespace-nowrap">
                   Date
                   {renderSortIcon('date')}
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleHeaderClick('description')}
               >
                 <div className="flex items-center">
@@ -126,7 +128,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden md:table-cell"
                 onClick={() => handleHeaderClick('category')}
               >
                 <div className="flex items-center">
@@ -135,16 +137,16 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleHeaderClick('amount')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center whitespace-nowrap">
                   Amount
                   {renderSortIcon('amount')}
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden lg:table-cell"
                 onClick={() => handleHeaderClick('account')}
               >
                 <div className="flex items-center">
@@ -152,10 +154,10 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                   {renderSortIcon('account')}
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                 Type
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -165,37 +167,57 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
               <React.Fragment key={transaction.id}>
                 {/* Main transaction row */}
                 <tr className="hover:bg-gray-50">
-                  <td className="px-3 py-4">
-                    {transaction.isParent && transaction.splitItems && transaction.splitItems.length > 0 && (
-                      <button
-                        onClick={() => toggleRow(transaction.id)}
-                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                      >
-                        {expandedRows.has(transaction.id) ? '▼' : '▶'}
-                      </button>
-                    )}
-                    {transaction.documentId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setViewingDocumentId(transaction.documentId!);
-                        }}
-                        className="text-blue-500 hover:text-blue-700 ml-1"
-                        title="View attachment"
-                      >
-                        📎
-                      </button>
-                    )}
+                  <td className="px-2 sm:px-3 py-4">
+                    <div className="flex flex-col gap-1">
+                      {transaction.isParent && transaction.splitItems && transaction.splitItems.length > 0 && (
+                        <button
+                          onClick={() => toggleRow(transaction.id)}
+                          className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
+                        >
+                          {expandedRows.has(transaction.id) ? '▼' : '▶'}
+                        </button>
+                      )}
+                      {transaction.documentId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingDocumentId(transaction.documentId!);
+                          }}
+                          className="text-blue-500 hover:text-blue-700 text-xs"
+                          title="View attachment"
+                        >
+                          📎
+                        </button>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                     {formatDate(transaction.date)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="flex flex-col">
+                  <td className="px-3 sm:px-6 py-4 text-xs sm:text-sm text-gray-900">
+                    <div className="flex flex-col min-w-[150px] sm:min-w-[200px]">
                       <span className="font-medium">{transaction.description}</span>
                       {transaction.notes && (
                         <span className="text-xs text-gray-500 mt-1">{transaction.notes}</span>
                       )}
+                      {/* Show category on mobile (hidden on desktop) */}
+                      <div className="md:hidden mt-1">
+                        {transaction.category ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{
+                              backgroundColor: transaction.category.color
+                                ? `${transaction.category.color}20`
+                                : '#f3f4f6',
+                              color: transaction.category.color || '#374151',
+                            }}
+                          >
+                            {transaction.category.name}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">Uncategorized</span>
+                        )}
+                      </div>
                       {transaction.tags && transaction.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {transaction.tags.map((tag) => (
@@ -213,9 +235,15 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                           {transaction.transfer.fromAccount?.name} → {transaction.transfer.toAccount?.name}
                         </span>
                       )}
+                      {/* Show account on mobile/tablet (hidden on desktop) */}
+                      <div className="lg:hidden mt-1">
+                        <span className="text-xs text-gray-500">
+                          {transaction.account?.name || 'Unknown'}
+                        </span>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 hidden md:table-cell">
                     {transaction.category ? (
                       <span
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -232,30 +260,32 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                       <span className="text-gray-400 italic">Uncategorized</span>
                     )}
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${getAmountColor(transaction.type)}`}>
+                  <td className={`px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-semibold ${getAmountColor(transaction.type)}`}>
                     {formatAmount(transaction.amount, transaction.type)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 hidden lg:table-cell">
                     {transaction.account?.name || 'Unknown'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(transaction.type)}`}>
                       {transaction.type}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => onEdit(transaction)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete(transaction)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                    <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-3">
+                      <button
+                        onClick={() => onEdit(transaction)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => onDelete(transaction)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
 
@@ -266,15 +296,15 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                   expandedRows.has(transaction.id) &&
                   transaction.splitItems.map((item) => (
                     <tr key={item.id} className="bg-gray-50">
-                      <td className="px-3 py-3"></td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        <div className="pl-6 flex items-center">
+                      <td className="px-2 sm:px-3 py-3"></td>
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500"></td>
+                      <td className="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-700">
+                        <div className="pl-4 sm:pl-6 flex items-center">
                           <span className="text-gray-400 mr-2">↳</span>
                           <span>{item.description}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700 hidden md:table-cell">
                         {item.category ? (
                           <span
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -291,18 +321,20 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                           <span className="text-gray-400 italic">Uncategorized</span>
                         )}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                         {formatCurrency(item.amount)}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500"></td>
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell"></td>
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell"></td>
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500"></td>
                     </tr>
                   ))}
               </React.Fragment>
             ))}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
 
       {/* Document Viewer Modal */}

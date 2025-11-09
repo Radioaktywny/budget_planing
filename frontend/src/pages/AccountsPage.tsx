@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { accountService } from '../services/accountService';
 import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest } from '../types';
 import { formatCurrency, formatAccountType } from '../utils/formatters';
+import { useToast } from '../contexts/ToastContext';
+import { useAsync } from '../hooks/useAsync';
+import LoadingSpinner, { ButtonSpinner } from '../components/LoadingSpinner';
+import { formatApiError } from '../services/api';
 
 const AccountsPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+  const toast = useToast();
 
   // Form state
   const [formData, setFormData] = useState<CreateAccountRequest>({
@@ -21,11 +25,10 @@ const AccountsPage: React.FC = () => {
   const loadAccounts = async () => {
     try {
       setLoading(true);
-      setError(null);
       const data = await accountService.getAll();
       setAccounts(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to load accounts');
+      toast.error(formatApiError(err));
     } finally {
       setLoading(false);
     }
@@ -33,27 +36,28 @@ const AccountsPage: React.FC = () => {
 
   useEffect(() => {
     loadAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle create account
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
+  // Create account with async hook
+  const createAccount = useAsync(
+    async () => {
       await accountService.create(formData);
       setShowCreateForm(false);
       setFormData({ name: '', type: AccountType.CHECKING });
       await loadAccounts();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+    },
+    {
+      showSuccessToast: true,
+      successMessage: 'Account created successfully',
+      showErrorToast: true,
     }
-  };
+  );
 
-  // Handle update account
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingAccount) return;
-
-    try {
+  // Update account with async hook
+  const updateAccount = useAsync(
+    async () => {
+      if (!editingAccount) return;
       const updateData: UpdateAccountRequest = {
         name: formData.name,
         type: formData.type,
@@ -62,22 +66,44 @@ const AccountsPage: React.FC = () => {
       setEditingAccount(null);
       setFormData({ name: '', type: AccountType.CHECKING });
       await loadAccounts();
-    } catch (err: any) {
-      setError(err.message || 'Failed to update account');
+    },
+    {
+      showSuccessToast: true,
+      successMessage: 'Account updated successfully',
+      showErrorToast: true,
     }
+  );
+
+  // Delete account with async hook
+  const deleteAccount = useAsync(
+    async () => {
+      if (!deletingAccount) return;
+      await accountService.delete(deletingAccount.id);
+      setDeletingAccount(null);
+      await loadAccounts();
+    },
+    {
+      showSuccessToast: true,
+      successMessage: 'Account deleted successfully',
+      showErrorToast: true,
+    }
+  );
+
+  // Handle create account
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createAccount.execute();
+  };
+
+  // Handle update account
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateAccount.execute();
   };
 
   // Handle delete account
   const handleDelete = async () => {
-    if (!deletingAccount) return;
-
-    try {
-      await accountService.delete(deletingAccount.id);
-      setDeletingAccount(null);
-      await loadAccounts();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete account');
-    }
+    await deleteAccount.execute();
   };
 
   // Open edit modal
@@ -115,7 +141,7 @@ const AccountsPage: React.FC = () => {
     return (
       <div className="p-6">
         <div className="flex justify-center items-center h-64">
-          <div className="text-gray-600">Loading accounts...</div>
+          <LoadingSpinner size="lg" text="Loading accounts..." />
         </div>
       </div>
     );
@@ -133,13 +159,6 @@ const AccountsPage: React.FC = () => {
           + Add Account
         </button>
       </div>
-
-      {/* Error message */}
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
 
       {/* Accounts list */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -239,9 +258,10 @@ const AccountsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  disabled={createAccount.loading}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  Create Account
+                  {createAccount.loading ? <ButtonSpinner /> : 'Create Account'}
                 </button>
               </div>
             </form>
@@ -293,9 +313,10 @@ const AccountsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  disabled={updateAccount.loading}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  Save Changes
+                  {updateAccount.loading ? <ButtonSpinner /> : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -321,9 +342,10 @@ const AccountsPage: React.FC = () => {
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={deleteAccount.loading}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                Delete
+                {deleteAccount.loading ? <ButtonSpinner /> : 'Delete'}
               </button>
             </div>
           </div>

@@ -148,26 +148,28 @@ const TransactionsPage: React.FC = () => {
   const totalPages = Math.ceil(totalCount / (filters.limit || 20));
 
   return (
-    <div className="p-6">
+    <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Transactions</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Transactions</h1>
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => setFormMode('transaction')}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           >
-            + Add Transaction
+            <span className="sm:hidden">+ Transaction</span>
+            <span className="hidden sm:inline">+ Add Transaction</span>
           </button>
           <button
             onClick={() => setFormMode('split')}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-purple-500 hover:bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           >
-            + Split Transaction
+            <span className="sm:hidden">+ Split</span>
+            <span className="hidden sm:inline">+ Split Transaction</span>
           </button>
           <button
             onClick={() => setFormMode('transfer')}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           >
             + Transfer
           </button>
@@ -261,8 +263,8 @@ const TransactionsPage: React.FC = () => {
       {/* Transaction Form Modal */}
       {formMode === 'transaction' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">
               {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
             </h2>
             <TransactionForm
@@ -278,8 +280,8 @@ const TransactionsPage: React.FC = () => {
       {/* Split Transaction Form Modal */}
       {formMode === 'split' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">
               {editingTransaction ? 'Edit Split Transaction' : 'Add Split Transaction'}
             </h2>
             <SplitTransactionForm
@@ -293,8 +295,8 @@ const TransactionsPage: React.FC = () => {
       {/* Transfer Form Modal */}
       {formMode === 'transfer' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">
               {editingTransaction ? 'Edit Transfer' : 'Add Transfer'}
             </h2>
             <TransferForm
@@ -307,10 +309,10 @@ const TransactionsPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deletingTransaction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">Delete Transaction</h2>
-            <p className="text-gray-700 mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600">Delete Transaction</h2>
+            <p className="text-sm sm:text-base text-gray-700 mb-6">
               Are you sure you want to delete this transaction?
               {deletingTransaction.isParent && (
                 <span className="block mt-2 text-sm text-red-600">
@@ -319,7 +321,7 @@ const TransactionsPage: React.FC = () => {
               )}
             </p>
             <div className="bg-gray-50 p-3 rounded mb-6">
-              <p className="text-sm">
+              <p className="text-sm break-words">
                 <strong>Description:</strong> {deletingTransaction.description}
               </p>
               <p className="text-sm">
@@ -329,7 +331,7 @@ const TransactionsPage: React.FC = () => {
                 <strong>Date:</strong> {new Date(deletingTransaction.date).toLocaleDateString()}
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setDeletingTransaction(null)}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors"
