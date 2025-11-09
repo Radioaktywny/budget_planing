@@ -29,22 +29,61 @@ const DashboardPage: React.FC = () => {
   const [expenseBreakdown, setExpenseBreakdown] = useState<CategoryBreakdown[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Date range state - default to previous month
+  const [dateRange, setDateRange] = useState<'previous-month' | 'current-month' | 'last-3-months' | 'custom'>('previous-month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const getDateRange = (): { startDate: string; endDate: string } => {
+    const now = new Date();
+    
+    switch (dateRange) {
+      case 'previous-month': {
+        const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        return {
+          startDate: startOfPrevMonth.toISOString().split('T')[0],
+          endDate: endOfPrevMonth.toISOString().split('T')[0],
+        };
+      }
+      case 'current-month': {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return {
+          startDate: startOfMonth.toISOString().split('T')[0],
+          endDate: endOfMonth.toISOString().split('T')[0],
+        };
+      }
+      case 'last-3-months': {
+        const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0],
+        };
+      }
+      case 'custom': {
+        return {
+          startDate: customStartDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+          endDate: customEndDate || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+        };
+      }
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current month date range
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const startDate = startOfMonth.toISOString().split('T')[0];
-      const endDate = endOfMonth.toISOString().split('T')[0];
+      // Get date range based on selection
+      const { startDate, endDate } = getDateRange();
+      console.log(`📅 Loading dashboard data for: ${startDate} to ${endDate} (${dateRange})`);
 
       // Load all data in parallel
       const [accountsData, summaryData, breakdownData, transactionsData] = await Promise.all([
@@ -140,6 +179,82 @@ const DashboardPage: React.FC = () => {
             <Upload className="h-4 w-4" />
             <span>Upload Document</span>
           </button>
+        </div>
+      </div>
+
+      {/* Date Range Selector */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-2 text-gray-700 font-medium">
+            <Calendar className="h-5 w-5" />
+            <span>Period:</span>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setDateRange('previous-month')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                dateRange === 'previous-month'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Previous Month
+            </button>
+            <button
+              onClick={() => setDateRange('current-month')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                dateRange === 'current-month'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Current Month
+            </button>
+            <button
+              onClick={() => setDateRange('last-3-months')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                dateRange === 'last-3-months'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 3 Months
+            </button>
+            <button
+              onClick={() => setDateRange('custom')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                dateRange === 'custom'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Custom Range
+            </button>
+          </div>
+
+          {dateRange === 'custom' && (
+            <div className="flex flex-col sm:flex-row items-center gap-3 ml-auto">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 font-medium">From:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 font-medium">To:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
