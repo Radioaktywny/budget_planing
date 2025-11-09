@@ -1,32 +1,7 @@
 import { Request, Response } from 'express';
 import * as categoryService from '../services/categoryService';
-import { PrismaClient } from '@prisma/client';
+import { getUserId } from '../middleware/userContext';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
-
-// For now, we use a default user email since authentication is not yet implemented
-// This will be replaced with actual user authentication in the future
-const DEFAULT_USER_EMAIL = 'user@budgetmanager.local';
-
-/**
- * Helper function to get user ID from request
- * Currently looks up default user by email, will be replaced with actual auth
- */
-async function getUserId(req: Request): Promise<string> {
-  // TODO: Extract from JWT token when authentication is implemented
-  const userEmail = req.headers['x-user-email'] as string || DEFAULT_USER_EMAIL;
-  
-  const user = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return user.id;
-}
 
 /**
  * GET /api/categories
@@ -36,7 +11,7 @@ async function getUserId(req: Request): Promise<string> {
  */
 export async function getAllCategories(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { hierarchy } = req.query;
 
     let categories;
@@ -64,7 +39,7 @@ export async function getAllCategories(req: Request, res: Response): Promise<voi
  */
 export async function getCategoryById(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const category = await categoryService.getCategoryById(id, userId);
@@ -97,7 +72,7 @@ export async function getCategoryById(req: Request, res: Response): Promise<void
  */
 export async function createCategory(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const categoryData = {
       ...req.body,
@@ -168,7 +143,7 @@ export async function createCategory(req: Request, res: Response): Promise<void>
  */
 export async function updateCategory(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const category = await categoryService.updateCategory(id, userId, req.body);
@@ -247,7 +222,7 @@ export async function updateCategory(req: Request, res: Response): Promise<void>
  */
 export async function deleteCategory(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
     const { reassignTo } = req.query;
 

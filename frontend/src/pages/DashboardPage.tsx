@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Plus, 
+  Upload,
+  ArrowUpRight,
+  ArrowDownRight,
+  ArrowLeftRight,
+  Calendar,
+  CreditCard
+} from 'lucide-react';
 import { accountService } from '../services/accountService';
 import { transactionService } from '../services/transactionService';
 import { reportService } from '../services/reportService';
@@ -87,8 +100,11 @@ const DashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-gray-600">Loading dashboard...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 font-medium">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -96,8 +112,11 @@ const DashboardPage: React.FC = () => {
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-r-lg shadow-sm">
+          <div className="flex items-center gap-3">
+            <TrendingDown className="h-5 w-5" />
+            <p className="font-medium">{error}</p>
+          </div>
         </div>
       </div>
     );
@@ -111,130 +130,235 @@ const DashboardPage: React.FC = () => {
   }));
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-1">Welcome back! Here's your financial overview.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => navigate('/transactions')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm sm:text-base"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
           >
-            <span className="sm:hidden">+ Transaction</span>
-            <span className="hidden sm:inline">Add Transaction</span>
+            <Plus className="h-4 w-4" />
+            <span>Add Transaction</span>
           </button>
           <button
             onClick={() => navigate('/import')}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm sm:text-base"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium"
           >
-            <span className="sm:hidden">+ Document</span>
-            <span className="hidden sm:inline">Upload Document</span>
+            <Upload className="h-4 w-4" />
+            <span>Upload Document</span>
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Total Balance</h3>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBalance)}</p>
-          <p className="text-xs text-gray-500 mt-1">Across {accounts.length} accounts</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Balance Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-lg text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Wallet className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">
+              {accounts.length} accounts
+            </span>
+          </div>
+          <h3 className="text-sm font-medium text-blue-100 mb-1">Total Balance</h3>
+          <p className="text-3xl font-bold">{formatCurrency(totalBalance)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Current Month Income</h3>
-          <p className="text-2xl font-bold text-green-600">
+        {/* Income Card */}
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-50 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <ArrowUpRight className="h-5 w-5 text-green-500" />
+          </div>
+          <h3 className="text-sm font-medium text-gray-600 mb-1">Income</h3>
+          <p className="text-2xl font-bold text-gray-900">
             {formatCurrency(currentMonthSummary?.totalIncome || 0)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-2">
             {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Current Month Expenses</h3>
-          <p className="text-2xl font-bold text-red-600">
+        {/* Expenses Card */}
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-red-50 rounded-lg">
+              <TrendingDown className="h-6 w-6 text-red-600" />
+            </div>
+            <ArrowDownRight className="h-5 w-5 text-red-500" />
+          </div>
+          <h3 className="text-sm font-medium text-gray-600 mb-1">Expenses</h3>
+          <p className="text-2xl font-bold text-gray-900">
             {formatCurrency(currentMonthSummary?.totalExpenses || 0)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-2">
             {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Net Balance</h3>
-          <p
-            className={`text-2xl font-bold ${
-              (currentMonthSummary?.netBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
+        {/* Net Balance Card */}
+        <div className={`p-6 rounded-xl shadow-md border hover:shadow-lg transition-shadow ${
+          (currentMonthSummary?.netBalance || 0) >= 0 
+            ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-100' 
+            : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-100'
+        }`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className={`p-3 rounded-lg ${
+              (currentMonthSummary?.netBalance || 0) >= 0 ? 'bg-green-100' : 'bg-red-100'
+            }`}>
+              <DollarSign className={`h-6 w-6 ${
+                (currentMonthSummary?.netBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+              }`} />
+            </div>
+          </div>
+          <h3 className="text-sm font-medium text-gray-600 mb-1">Net Balance</h3>
+          <p className={`text-2xl font-bold ${
+            (currentMonthSummary?.netBalance || 0) >= 0 ? 'text-green-700' : 'text-red-700'
+          }`}>
             {formatCurrency(currentMonthSummary?.netBalance || 0)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">This month</p>
+          <p className="text-xs text-gray-500 mt-2">This month</p>
         </div>
       </div>
 
       {/* Charts and Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Expense Breakdown Chart */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Expense Breakdown</h2>
+        <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-md border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">Expense Breakdown</h2>
           {chartData.length > 0 ? (
-            <div className="h-64 sm:h-80">
+            <div className="h-80">
               <PieChart data={chartData} />
             </div>
           ) : (
-            <div className="h-64 sm:h-80 flex items-center justify-center text-gray-500">
-              No expenses this month
+            <div className="h-80 flex flex-col items-center justify-center text-gray-400">
+              <TrendingDown className="h-12 w-12 mb-3 opacity-50" />
+              <p className="font-medium">No expenses this month</p>
             </div>
           )}
         </div>
 
-        {/* Recent Transactions */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold">Recent Transactions</h2>
+        {/* Recent Transactions Table */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+          <div className="flex justify-between items-center p-6 border-b border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900">Recent Transactions</h2>
             <button
               onClick={() => navigate('/transactions')}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
             >
               View All
+              <ArrowUpRight className="h-4 w-4" />
             </button>
           </div>
-          <div className="space-y-3">
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 border-b last:border-b-0 gap-2"
+          
+          {recentTransactions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                      Account
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            transaction.type === 'INCOME' 
+                              ? 'bg-green-50' 
+                              : transaction.type === 'EXPENSE' 
+                              ? 'bg-red-50' 
+                              : 'bg-blue-50'
+                          }`}>
+                            {transaction.type === 'INCOME' ? (
+                              <ArrowUpRight className={`h-4 w-4 ${getTransactionTypeColor(transaction.type)}`} />
+                            ) : transaction.type === 'EXPENSE' ? (
+                              <ArrowDownRight className={`h-4 w-4 ${getTransactionTypeColor(transaction.type)}`} />
+                            ) : (
+                              <ArrowLeftRight className={`h-4 w-4 ${getTransactionTypeColor(transaction.type)}`} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{transaction.description}</p>
+                            <div className="flex items-center gap-2 mt-1 md:hidden">
+                              <Calendar className="h-3 w-3 text-gray-400" />
+                              <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          {formatDate(transaction.date)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                        {transaction.category ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {transaction.category.name}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">Uncategorized</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        {transaction.account && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <CreditCard className="h-4 w-4 text-gray-400" />
+                            {transaction.account.name}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className={`font-semibold text-sm ${getTransactionTypeColor(transaction.type)}`}>
+                          {transaction.type === 'INCOME' ? '+' : transaction.type === 'EXPENSE' ? '-' : ''}
+                          {formatCurrency(transaction.amount)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center gap-3 text-gray-400">
+                <DollarSign className="h-12 w-12 opacity-50" />
+                <p className="font-medium">No transactions yet</p>
+                <button
+                  onClick={() => navigate('/transactions')}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{transaction.description}</p>
-                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
-                      <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
-                      {transaction.category && (
-                        <>
-                          <span className="text-gray-300 hidden sm:inline">•</span>
-                          <p className="text-xs text-gray-500 truncate">{transaction.category.name}</p>
-                        </>
-                      )}
-                      {transaction.account && (
-                        <>
-                          <span className="text-gray-300 hidden sm:inline">•</span>
-                          <p className="text-xs text-gray-500 truncate">{transaction.account.name}</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <p className={`font-semibold whitespace-nowrap ${getTransactionTypeColor(transaction.type)}`}>
-                    {transaction.type === 'INCOME' ? '+' : transaction.type === 'EXPENSE' ? '-' : ''}
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">No transactions yet</div>
-            )}
-          </div>
+                  Add your first transaction
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

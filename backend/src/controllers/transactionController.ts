@@ -1,29 +1,7 @@
 import { Request, Response } from 'express';
 import * as transactionService from '../services/transactionService';
-import { PrismaClient } from '@prisma/client';
+import { getUserId } from '../middleware/userContext';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
-
-// For now, we use a default user email since authentication is not yet implemented
-const DEFAULT_USER_EMAIL = 'user@budgetmanager.local';
-
-/**
- * Helper function to get user ID from request
- */
-async function getUserId(req: Request): Promise<string> {
-  const userEmail = req.headers['x-user-email'] as string || DEFAULT_USER_EMAIL;
-  
-  const user = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return user.id;
-}
 
 /**
  * GET /api/transactions
@@ -46,7 +24,7 @@ async function getUserId(req: Request): Promise<string> {
  */
 export async function getAllTransactions(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     // Parse query parameters for filtering
     const filters: any = {};
@@ -152,7 +130,7 @@ export async function getAllTransactions(req: Request, res: Response): Promise<v
  */
 export async function getTransactionById(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const transaction = await transactionService.getTransactionById(id, userId);
@@ -185,7 +163,7 @@ export async function getTransactionById(req: Request, res: Response): Promise<v
  */
 export async function createTransaction(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const transactionData = {
       ...req.body,
@@ -246,7 +224,7 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
  */
 export async function updateTransaction(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const transaction = await transactionService.updateTransaction(id, userId, req.body);
@@ -313,7 +291,7 @@ export async function updateTransaction(req: Request, res: Response): Promise<vo
  */
 export async function deleteTransaction(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     await transactionService.deleteTransaction(id, userId);
@@ -356,7 +334,7 @@ export async function deleteTransaction(req: Request, res: Response): Promise<vo
  */
 export async function createTransfer(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const transferData = {
       ...req.body,
@@ -417,7 +395,7 @@ export async function createTransfer(req: Request, res: Response): Promise<void>
  */
 export async function createSplitTransaction(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const splitData = {
       ...req.body,
@@ -488,7 +466,7 @@ export async function createSplitTransaction(req: Request, res: Response): Promi
  */
 export async function getSplitTransactionItems(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const items = await transactionService.getSplitTransactionItems(id, userId);
@@ -541,7 +519,7 @@ export async function getSplitTransactionItems(req: Request, res: Response): Pro
  */
 export async function createBulkTransactions(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const transactions = await transactionService.createBulkTransactions(req.body, userId);
     res.status(201).json({

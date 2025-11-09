@@ -1,28 +1,6 @@
 import { Request, Response } from 'express';
 import * as importService from '../services/importService';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-// For now, we use a default user email since authentication is not yet implemented
-const DEFAULT_USER_EMAIL = 'user@budgetmanager.local';
-
-/**
- * Helper function to get user ID from request
- */
-async function getUserId(req: Request): Promise<string> {
-  const userEmail = req.headers['x-user-email'] as string || DEFAULT_USER_EMAIL;
-  
-  const user = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return user.id;
-}
+import { getUserId } from '../middleware/userContext';
 
 /**
  * POST /api/import/json
@@ -30,7 +8,7 @@ async function getUserId(req: Request): Promise<string> {
  */
 export async function importJSON(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     // Get JSON string from request body
     const jsonString = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
@@ -94,7 +72,7 @@ export async function importJSON(req: Request, res: Response): Promise<void> {
  */
 export async function importYAML(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     // Get YAML string from request body
     let yamlString: string;

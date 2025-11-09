@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as reportService from '../services/reportService';
 import * as pdfService from '../services/pdfService';
 import * as excelService from '../services/excelService';
+import { getUserId } from '../middleware/userContext';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -9,22 +10,14 @@ const prisma = new PrismaClient();
 /**
  * GET /api/reports/summary
  * Get monthly summary for a date range
- * Query params: userId, startDate, endDate
+ * Query params: startDate, endDate
  */
 export async function getMonthlySummary(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate } = req.query;
+    const userId = getUserId(req);
+    const { startDate, endDate } = req.query;
 
     // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -105,18 +98,8 @@ export async function getMonthlySummary(req: Request, res: Response): Promise<vo
  */
 export async function getCategoryBreakdown(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate, type } = req.query;
-
-    // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
+    const userId = getUserId(req);
+    const { startDate, endDate, type } = req.query;
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -205,18 +188,8 @@ export async function getCategoryBreakdown(req: Request, res: Response): Promise
  */
 export async function getNetBalanceOverTime(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate } = req.query;
-
-    // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
+    const userId = getUserId(req);
+    const { startDate, endDate } = req.query;
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -288,18 +261,8 @@ export async function getNetBalanceOverTime(req: Request, res: Response): Promis
  */
 export async function getComprehensiveReport(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate } = req.query;
-
-    // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
+    const userId = getUserId(req);
+    const { startDate, endDate } = req.query;
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -371,18 +334,8 @@ export async function getComprehensiveReport(req: Request, res: Response): Promi
  */
 export async function exportPDFReport(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate } = req.body;
-
-    // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
+    const userId = getUserId(req);
+    const { startDate, endDate } = req.body;
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -467,18 +420,8 @@ export async function exportPDFReport(req: Request, res: Response): Promise<void
  */
 export async function exportExcelReport(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, startDate, endDate, includeTransactions } = req.body;
-
-    // Validate required parameters
-    if (!userId || typeof userId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'userId is required',
-        },
-      });
-      return;
-    }
+    const userId = getUserId(req);
+    const { startDate, endDate, includeTransactions } = req.body;
 
     if (!startDate || typeof startDate !== 'string') {
       res.status(400).json({
@@ -598,3 +541,4 @@ export async function exportExcelReport(req: Request, res: Response): Promise<vo
     });
   }
 }
+

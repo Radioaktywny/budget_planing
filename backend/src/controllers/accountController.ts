@@ -1,32 +1,7 @@
 import { Request, Response } from 'express';
 import * as accountService from '../services/accountService';
-import { PrismaClient } from '@prisma/client';
+import { getUserId } from '../middleware/userContext';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
-
-// For now, we use a default user email since authentication is not yet implemented
-// This will be replaced with actual user authentication in the future
-const DEFAULT_USER_EMAIL = 'user@budgetmanager.local';
-
-/**
- * Helper function to get user ID from request
- * Currently looks up default user by email, will be replaced with actual auth
- */
-async function getUserId(req: Request): Promise<string> {
-  // TODO: Extract from JWT token when authentication is implemented
-  const userEmail = req.headers['x-user-email'] as string || DEFAULT_USER_EMAIL;
-  
-  const user = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return user.id;
-}
 
 /**
  * GET /api/accounts
@@ -34,7 +9,7 @@ async function getUserId(req: Request): Promise<string> {
  */
 export async function getAllAccounts(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const accounts = await accountService.getAllAccounts(userId);
     res.json(accounts);
   } catch (error) {
@@ -54,7 +29,7 @@ export async function getAllAccounts(req: Request, res: Response): Promise<void>
  */
 export async function getAccountById(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const account = await accountService.getAccountById(id, userId);
@@ -87,7 +62,7 @@ export async function getAccountById(req: Request, res: Response): Promise<void>
  */
 export async function createAccount(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     
     const accountData = {
       ...req.body,
@@ -148,7 +123,7 @@ export async function createAccount(req: Request, res: Response): Promise<void> 
  */
 export async function updateAccount(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const account = await accountService.updateAccount(id, userId, req.body);
@@ -215,7 +190,7 @@ export async function updateAccount(req: Request, res: Response): Promise<void> 
  */
 export async function deleteAccount(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     await accountService.deleteAccount(id, userId);
@@ -268,7 +243,7 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
  */
 export async function getAccountBalance(req: Request, res: Response): Promise<void> {
   try {
-    const userId = await getUserId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     const balance = await accountService.getAccountBalance(id, userId);

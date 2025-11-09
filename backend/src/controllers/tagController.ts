@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as tagService from '../services/tagService';
+import { getUserId } from '../middleware/userContext';
 
 export const tagController = {
   /**
@@ -8,18 +9,7 @@ export const tagController = {
    */
   async getAllTags(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.query.userId as string;
-
-      if (!userId) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'User ID is required'
-          }
-        });
-        return;
-      }
-
+      const userId = getUserId(req);
       const tags = await tagService.getAllTags(userId);
       res.json(tags);
     } catch (error) {
@@ -72,18 +62,7 @@ export const tagController = {
   async deleteTag(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.query.userId as string;
-
-      if (!userId) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'User ID is required'
-          }
-        });
-        return;
-      }
-
+      const userId = getUserId(req);
       await tagService.deleteTag(id, userId);
       res.status(204).send();
     } catch (error) {

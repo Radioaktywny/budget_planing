@@ -8,6 +8,7 @@ import documentRoutes from './routes/documentRoutes';
 import aiRoutes from './routes/aiRoutes';
 import importRoutes from './routes/importRoutes';
 import reportRoutes from './routes/reportRoutes';
+import { userContextMiddleware, ensureDefaultUser } from './middleware/userContext';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +34,11 @@ app.get('/api', (_req: Request, res: Response) => {
   });
 });
 
+// Apply user context middleware to all API routes
+// This attaches req.userId to all requests for user-specific data access
+// TODO: Replace with JWT authentication middleware when multi-user auth is implemented
+app.use('/api', userContextMiddleware);
+
 // Account routes
 app.use('/api/accounts', accountRoutes);
 
@@ -54,9 +60,23 @@ app.use('/api/import', importRoutes);
 // Report routes
 app.use('/api/reports', reportRoutes);
 
+// Initialize application
+async function initializeApp() {
+  try {
+    // Ensure default user exists in database
+    await ensureDefaultUser();
+    console.log('✓ Application initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    process.exit(1);
+  }
+}
+
 // Start server
-app.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+initializeApp().then(() => {
+  app.listen(port, () => {
+    console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+  });
 });
 
 export default app;
