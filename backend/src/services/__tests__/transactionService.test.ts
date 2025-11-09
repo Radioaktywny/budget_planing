@@ -836,7 +836,6 @@ describe('Transaction Service', () => {
       expect(account?.balance).toBe(0);
     });
   });
-});
 
   describe('createBulkTransactions', () => {
     it('should create multiple transactions in bulk', async () => {
@@ -1014,3 +1013,307 @@ describe('Transaction Service', () => {
       expect(transactions[0].tags[0].tag.id).toBe(tag.id);
     });
   });
+
+  describe('getAllTransactions with filtering', () => {
+    let account1Id: string;
+    let account2Id: string;
+    let category1Id: string;
+    let category2Id: string;
+    let subcategoryId: string;
+    let tag1Id: string;
+    let tag2Id: string;
+
+    beforeEach(async () => {
+      // Create test accounts with unique names
+      const timestamp = Date.now();
+      const account1 = await accountService.createAccount({
+        name: `Checking-${timestamp}`,
+        type: 'CHECKING',
+        userId: testUserId,
+      });
+      account1Id = account1.id;
+
+      const account2 = await accountService.createAccount({
+        name: `Savings-${timestamp}`,
+        type: 'SAVINGS',
+        userId: testUserId,
+      });
+      account2Id = account2.id;
+
+      // Create test categories with hierarchy
+      const category1 = await prisma.category.create({
+        data: { name: 'Shopping', userId: testUserId },
+      });
+      category1Id = category1.id;
+
+      const category2 = await prisma.category.create({
+        data: { name: 'Food', userId: testUserId },
+      });
+      category2Id = category2.id;
+
+      const subcategory = await prisma.category.create({
+        data: { name: 'Groceries', parentId: category2Id, userId: testUserId },
+      });
+      subcategoryId = subcategory.id;
+
+      // Create test tags
+      const tag1 = await prisma.tag.create({
+        data: { name: 'business', userId: testUserId },
+      });
+      tag1Id = tag1.id;
+
+      const tag2 = await prisma.tag.create({
+        data: { name: 'urgent', userId: testUserId },
+      });
+      tag2Id = tag2.id;
+
+      // Create test transactions
+      const transaction1 = await transactionService.createTransaction({
+        date: new Date('2024-01-15'),
+        amount: 100,
+        type: 'EXPENSE',
+        description: 'Grocery shopping',
+        accountId: account1Id,
+        categoryId: subcategoryId,
+        userId: testUserId,
+      });
+
+      await prisma.transactionTag.create({
+        data: { transactionId: transaction1.id, tagId: tag1Id },
+      });
+
+      const transaction2 = await transactionService.createTransaction({
+        date: new Date('2024-01-20'),
+        amount: 200,
+        type: 'EXPENSE',
+        description: 'Electronics purchase',
+        accountId: account2Id,
+        categoryId: category1Id,
+        userId: testUserId,
+      });
+
+      await prisma.transactionTag.createMany({
+        data: [
+          { transactionId: transaction2.id, tagId: tag1Id },
+          { transactionId: transaction2.id, tagId: tag2Id },
+        ],
+      });
+
+      await transactionService.createTransaction({
+        date: new Date('2024-02-01'),
+        amount: 50,
+        type: 'EXPENSE',
+        description: 'Restaurant meal',
+        accountId: account1Id,
+        categoryId: category2Id,
+        userId: testUserId,
+      });
+
+      await transactionService.createTransaction({
+        date: new Date('2024-02-10'),
+        amount: 1000,
+        type: 'INCOME',
+        description: 'Salary payment',
+        accountId: account1Id,
+        userId: testUserId,
+      });
+    });
+
+    it('should filter transactions by date range', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-31'),
+      });
+
+      expect(transactions.length).toBe(2);
+      expect(transactions.every(t => {
+        const date = new Date(t.date);
+        return date >= new Date('2024-01-01') && date <= new Date('2024-01-31');
+      })).toBe(true);
+    });
+
+    it('should filter transactions by account', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        accountId: account1Id,
+      });
+
+      expect(transactions.length).toBe(3);
+      expect(transactions.every(t => t.accountId === account1Id)).toBe(true);
+    });
+
+    it('should filter transactions by multiple accounts', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        accountIds: [account1Id, account2Id],
+      });
+
+      expect(transactions.length).toBe(4);
+    });
+
+    it('should filter transactions by category', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        categoryId: category1Id,
+      });
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].categoryId).toBe(category1Id);
+    });
+
+    it('should filter transactions by category with subcategories', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        categoryId: category2Id,
+        includeSubcategories: true,
+      });
+
+      expect(transactions.length).toBe(2);
+      const categoryIds = transactions.map(t => t.categoryId);
+      expect(categoryIds).toContain(category2Id);
+      expect(categoryIds).toContain(subcategoryId);
+    });
+
+    it('should filter transactions by type', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        type: 'INCOME',
+      });
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].type).toBe('INCOME');
+    });
+
+    it('should filter transactions by text search', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        search: 'shopping',
+      });
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].description.toLowerCase()).toContain('shopping');
+    });
+
+    it('should filter transactions by single tag', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        tagIds: [tag1Id],
+      });
+
+      expect(transactions.length).toBe(2);
+      expect(transactions.every(t => 
+        t.tags.some(tt => tt.tag.id === tag1Id)
+      )).toBe(true);
+    });
+
+    it('should filter transactions by multiple tags (AND logic)', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        tagIds: [tag1Id, tag2Id],
+      });
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].tags.length).toBe(2);
+    });
+
+    it('should sort transactions by amount ascending', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        sortBy: 'amount',
+        sortOrder: 'asc',
+      });
+
+      expect(transactions.length).toBe(4);
+      expect(Number(transactions[0].amount)).toBeLessThanOrEqual(Number(transactions[1].amount));
+    });
+
+    it('should sort transactions by description', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        sortBy: 'description',
+        sortOrder: 'asc',
+      });
+
+      expect(transactions.length).toBe(4);
+      for (let i = 0; i < transactions.length - 1; i++) {
+        expect(transactions[i].description.localeCompare(transactions[i + 1].description)).toBeLessThanOrEqual(0);
+      }
+    });
+
+    it('should combine multiple filters', async () => {
+      const transactions = await transactionService.getAllTransactions(testUserId, {
+        accountId: account1Id,
+        type: 'EXPENSE',
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-31'),
+      });
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].accountId).toBe(account1Id);
+      expect(transactions[0].type).toBe('EXPENSE');
+    });
+  });
+
+  describe('getPaginatedTransactions', () => {
+    beforeEach(async () => {
+      // Create 15 test transactions
+      for (let i = 1; i <= 15; i++) {
+        await transactionService.createTransaction({
+          date: new Date(`2024-01-${i.toString().padStart(2, '0')}`),
+          amount: i * 10,
+          type: i % 2 === 0 ? 'INCOME' : 'EXPENSE',
+          description: `Transaction ${i}`,
+          accountId: testAccountId,
+          userId: testUserId,
+        });
+      }
+    });
+
+    it('should return paginated transactions with default page size', async () => {
+      const result = await transactionService.getPaginatedTransactions(testUserId, {
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.transactions.length).toBe(10);
+      expect(result.total).toBe(15);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
+      expect(result.totalPages).toBe(2);
+    });
+
+    it('should return second page of transactions', async () => {
+      const result = await transactionService.getPaginatedTransactions(testUserId, {
+        page: 2,
+        limit: 10,
+      });
+
+      expect(result.transactions.length).toBe(5);
+      expect(result.page).toBe(2);
+    });
+
+    it('should calculate total income and expense correctly', async () => {
+      const result = await transactionService.getPaginatedTransactions(testUserId);
+
+      expect(result.totalIncome).toBeGreaterThan(0);
+      expect(result.totalExpense).toBeGreaterThan(0);
+    });
+
+    it('should support filtering with pagination', async () => {
+      const result = await transactionService.getPaginatedTransactions(testUserId, {
+        type: 'EXPENSE',
+        page: 1,
+        limit: 5,
+      });
+
+      expect(result.transactions.every(t => t.type === 'EXPENSE')).toBe(true);
+      expect(result.transactions.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should support sorting with pagination', async () => {
+      const result = await transactionService.getPaginatedTransactions(testUserId, {
+        sortBy: 'amount',
+        sortOrder: 'asc',
+        page: 1,
+        limit: 5,
+      });
+
+      expect(result.transactions.length).toBe(5);
+      for (let i = 0; i < result.transactions.length - 1; i++) {
+        expect(Number(result.transactions[i].amount)).toBeLessThanOrEqual(
+          Number(result.transactions[i + 1].amount)
+        );
+      }
+    });
+  });
+});

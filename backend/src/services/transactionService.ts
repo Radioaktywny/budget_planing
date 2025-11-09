@@ -102,38 +102,119 @@ export interface TransactionWithRelations extends Transaction {
   }>;
 }
 
+export interface TransactionFilters {
+  accountId?: string;
+  accountIds?: string[]; // Support multiple accounts
+  categoryId?: string;
+  includeSubcategories?: boolean; // Include child categories in hierarchy
+  type?: string;
+  startDate?: Date;
+  endDate?: Date;
+  search?: string;
+  tagIds?: string[]; // Support multiple tags
+  sortBy?: 'date' | 'amount' | 'description' | 'category';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedTransactions {
+  transactions: TransactionWithRelations[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalIncome: number;
+  totalExpense: number;
+}
+
+/**
+ * Get all category IDs including subcategories recursively
+ */
+async function getCategoryIdsWithChildren(categoryId: string, userId: string): Promise<string[]> {
+  const categoryIds: string[] = [categoryId];
+  
+  // Get all child categories recursively
+  const getChildren = async (parentId: string): Promise<void> => {
+    const children = await prisma.category.findMany({
+      where: {
+        parentId,
+        userId,
+      },
+      select: { id: true },
+    });
+    
+    for (const child of children) {
+      categoryIds.push(child.id);
+      await getChildren(child.id);
+    }
+  };
+  
+  await getChildren(categoryId);
+  return categoryIds;
+}
+
 /**
  * Get all transactions for a user with optional filtering
  * Returns both regular transactions and parent split transactions (with their child items)
  */
 export async function getAllTransactions(
   userId: string,
-  filters?: {
-    accountId?: string;
-    categoryId?: string;
-    type?: string;
-    startDate?: Date;
-    endDate?: Date;
-    search?: string;
-  }
+  filters?: TransactionFilters
 ): Promise<TransactionWithRelations[]> {
   const where: any = {
     userId,
     parentId: null, // Only get top-level transactions (regular transactions and parent split transactions)
   };
 
+  // Account filtering - support single or multiple accounts
   if (filters?.accountId) {
     where.accountId = filters.accountId;
+  } else if (filters?.accountIds && filters.accountIds.length > 0) {
+    where.accountId = { in: filters.accountIds };
   }
 
+  // Category filtering with hierarchy support
   if (filters?.categoryId) {
-    where.categoryId = filters.categoryId;
+    if (filters.includeSubcategories) {
+      // Get all category IDs including children
+      const categoryIds = await getCategoryIdsWithChildren(filters.categoryId, userId);
+      
+      // For parent transactions, check if any child has matching category
+      // For regular transactions, check the transaction's category
+      where.OR = [
+        { categoryId: { in: categoryIds } },
+        {
+          isParent: true,
+          splitItems: {
+            some: {
+              categoryId: { in: categoryIds },
+            },
+          },
+        },
+      ];
+    } else {
+      // Simple category match
+      where.OR = [
+        { categoryId: filters.categoryId },
+        {
+          isParent: true,
+          splitItems: {
+            some: {
+              categoryId: filters.categoryId,
+            },
+          },
+        },
+      ];
+    }
   }
 
+  // Transaction type filtering
   if (filters?.type) {
     where.type = filters.type;
   }
 
+  // Date range filtering
   if (filters?.startDate || filters?.endDate) {
     where.date = {};
     if (filters.startDate) {
@@ -144,11 +225,44 @@ export async function getAllTransactions(
     }
   }
 
+  // Text search on description
   if (filters?.search) {
     where.description = {
       contains: filters.search,
-      mode: 'insensitive',
+      // Note: SQLite doesn't support mode: 'insensitive', but contains is case-insensitive by default in SQLite
     };
+  }
+
+  // Tag filtering - support multiple tags (AND logic: transaction must have all specified tags)
+  if (filters?.tagIds && filters.tagIds.length > 0) {
+    where.AND = filters.tagIds.map(tagId => ({
+      tags: {
+        some: {
+          tagId,
+        },
+      },
+    }));
+  }
+
+  // Determine sort order
+  const sortBy = filters?.sortBy || 'date';
+  const sortOrder = filters?.sortOrder || 'desc';
+  
+  let orderBy: any = {};
+  switch (sortBy) {
+    case 'amount':
+      orderBy = { amount: sortOrder };
+      break;
+    case 'description':
+      orderBy = { description: sortOrder };
+      break;
+    case 'category':
+      orderBy = { category: { name: sortOrder } };
+      break;
+    case 'date':
+    default:
+      orderBy = { date: sortOrder };
+      break;
   }
 
   const transactions = await prisma.transaction.findMany({
@@ -222,10 +336,237 @@ export async function getAllTransactions(
         orderBy: { createdAt: 'asc' },
       },
     },
-    orderBy: { date: 'desc' },
+    orderBy,
   });
 
   return transactions;
+}
+
+/**
+ * Get paginated transactions with filtering and totals
+ */
+export async function getPaginatedTransactions(
+  userId: string,
+  filters?: TransactionFilters
+): Promise<PaginatedTransactions> {
+  const page = filters?.page || 1;
+  const limit = filters?.limit || 50;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    userId,
+    parentId: null, // Only get top-level transactions
+  };
+
+  // Account filtering
+  if (filters?.accountId) {
+    where.accountId = filters.accountId;
+  } else if (filters?.accountIds && filters.accountIds.length > 0) {
+    where.accountId = { in: filters.accountIds };
+  }
+
+  // Category filtering with hierarchy support
+  if (filters?.categoryId) {
+    if (filters.includeSubcategories) {
+      const categoryIds = await getCategoryIdsWithChildren(filters.categoryId, userId);
+      where.OR = [
+        { categoryId: { in: categoryIds } },
+        {
+          isParent: true,
+          splitItems: {
+            some: {
+              categoryId: { in: categoryIds },
+            },
+          },
+        },
+      ];
+    } else {
+      where.OR = [
+        { categoryId: filters.categoryId },
+        {
+          isParent: true,
+          splitItems: {
+            some: {
+              categoryId: filters.categoryId,
+            },
+          },
+        },
+      ];
+    }
+  }
+
+  // Transaction type filtering
+  if (filters?.type) {
+    where.type = filters.type;
+  }
+
+  // Date range filtering
+  if (filters?.startDate || filters?.endDate) {
+    where.date = {};
+    if (filters.startDate) {
+      where.date.gte = filters.startDate;
+    }
+    if (filters.endDate) {
+      where.date.lte = filters.endDate;
+    }
+  }
+
+  // Text search
+  if (filters?.search) {
+    where.description = {
+      contains: filters.search,
+      // Note: SQLite doesn't support mode: 'insensitive', but contains is case-insensitive by default in SQLite
+    };
+  }
+
+  // Tag filtering
+  if (filters?.tagIds && filters.tagIds.length > 0) {
+    where.AND = filters.tagIds.map(tagId => ({
+      tags: {
+        some: {
+          tagId,
+        },
+      },
+    }));
+  }
+
+  // Determine sort order
+  const sortBy = filters?.sortBy || 'date';
+  const sortOrder = filters?.sortOrder || 'desc';
+  
+  let orderBy: any = {};
+  switch (sortBy) {
+    case 'amount':
+      orderBy = { amount: sortOrder };
+      break;
+    case 'description':
+      orderBy = { description: sortOrder };
+      break;
+    case 'category':
+      orderBy = { category: { name: sortOrder } };
+      break;
+    case 'date':
+    default:
+      orderBy = { date: sortOrder };
+      break;
+  }
+
+  // Get total count
+  const total = await prisma.transaction.count({ where });
+
+  // Get paginated transactions
+  const transactions = await prisma.transaction.findMany({
+    where,
+    include: {
+      account: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+      },
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      transfer: {
+        include: {
+          fromAccount: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          toAccount: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      splitItems: {
+        include: {
+          account: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy,
+    skip,
+    take: limit,
+  });
+
+  // Calculate totals (income and expense)
+  const allTransactions = await prisma.transaction.findMany({
+    where,
+    select: {
+      amount: true,
+      type: true,
+      isParent: true,
+    },
+  });
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  for (const transaction of allTransactions) {
+    // Skip parent transactions as their amounts are counted in children
+    if (transaction.isParent) continue;
+    
+    if (transaction.type === 'INCOME') {
+      totalIncome += Number(transaction.amount);
+    } else if (transaction.type === 'EXPENSE') {
+      totalExpense += Number(transaction.amount);
+    }
+    // TRANSFER transactions are excluded from totals
+  }
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    transactions,
+    total,
+    page,
+    limit,
+    totalPages,
+    totalIncome,
+    totalExpense,
+  };
 }
 
 /**

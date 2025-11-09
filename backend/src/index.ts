@@ -7,6 +7,7 @@ import categoryRoutes from './routes/categoryRoutes';
 import documentRoutes from './routes/documentRoutes';
 import aiRoutes from './routes/aiRoutes';
 import importRoutes from './routes/importRoutes';
+import reportRoutes from './routes/reportRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,9 @@ app.use('/api/ai', aiRoutes);
 
 // Import routes
 app.use('/api/import', importRoutes);
+
+// Report routes
+app.use('/api/reports', reportRoutes);
 
 // Start server
 app.listen(port, () => {

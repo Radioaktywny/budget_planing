@@ -27,7 +27,22 @@ async function getUserId(req: Request): Promise<string> {
 
 /**
  * GET /api/transactions
- * Get all transactions with optional filtering
+ * Get all transactions with optional filtering, sorting, and pagination
+ * 
+ * Query parameters:
+ * - accountId: Filter by single account ID
+ * - accountIds: Filter by multiple account IDs (comma-separated)
+ * - categoryId: Filter by category ID
+ * - includeSubcategories: Include child categories (true/false)
+ * - type: Filter by transaction type (INCOME, EXPENSE, TRANSFER)
+ * - startDate: Filter by start date (ISO format)
+ * - endDate: Filter by end date (ISO format)
+ * - search: Text search on description
+ * - tagIds: Filter by tag IDs (comma-separated, AND logic)
+ * - sortBy: Sort field (date, amount, description, category)
+ * - sortOrder: Sort order (asc, desc)
+ * - page: Page number for pagination
+ * - limit: Items per page
  */
 export async function getAllTransactions(req: Request, res: Response): Promise<void> {
   try {
@@ -36,18 +51,31 @@ export async function getAllTransactions(req: Request, res: Response): Promise<v
     // Parse query parameters for filtering
     const filters: any = {};
     
+    // Account filtering
     if (req.query.accountId) {
       filters.accountId = req.query.accountId as string;
     }
     
+    if (req.query.accountIds) {
+      const accountIdsStr = req.query.accountIds as string;
+      filters.accountIds = accountIdsStr.split(',').map(id => id.trim());
+    }
+    
+    // Category filtering
     if (req.query.categoryId) {
       filters.categoryId = req.query.categoryId as string;
     }
     
+    if (req.query.includeSubcategories) {
+      filters.includeSubcategories = req.query.includeSubcategories === 'true';
+    }
+    
+    // Transaction type
     if (req.query.type) {
       filters.type = req.query.type as string;
     }
     
+    // Date range
     if (req.query.startDate) {
       filters.startDate = new Date(req.query.startDate as string);
     }
@@ -56,14 +84,59 @@ export async function getAllTransactions(req: Request, res: Response): Promise<v
       filters.endDate = new Date(req.query.endDate as string);
     }
     
+    // Text search
     if (req.query.search) {
       filters.search = req.query.search as string;
     }
+    
+    // Tag filtering
+    if (req.query.tagIds) {
+      const tagIdsStr = req.query.tagIds as string;
+      filters.tagIds = tagIdsStr.split(',').map(id => id.trim());
+    }
+    
+    // Sorting
+    if (req.query.sortBy) {
+      filters.sortBy = req.query.sortBy as string;
+    }
+    
+    if (req.query.sortOrder) {
+      filters.sortOrder = req.query.sortOrder as string;
+    }
+    
+    // Pagination
+    if (req.query.page) {
+      filters.page = parseInt(req.query.page as string, 10);
+    }
+    
+    if (req.query.limit) {
+      filters.limit = parseInt(req.query.limit as string, 10);
+    }
 
-    const transactions = await transactionService.getAllTransactions(userId, filters);
-    res.json(transactions);
+    // If pagination parameters are provided, use paginated endpoint
+    if (filters.page || filters.limit) {
+      const result = await transactionService.getPaginatedTransactions(userId, filters);
+      res.json(result);
+    } else {
+      // Otherwise, return all transactions
+      const transactions = await transactionService.getAllTransactions(userId, filters);
+      res.json(transactions);
+    }
   } catch (error) {
     console.error('Error fetching transactions:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid')) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.message,
+          },
+        });
+        return;
+      }
+    }
+    
     res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',
