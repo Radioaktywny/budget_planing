@@ -857,8 +857,15 @@ all transaction data
     - Wire up API calls
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-- [ ] 24. Implement category and tag management UI
-  - [ ] 24.1 Create CategoriesPage component
+- [x] 24. Implement category and tag management UI
+
+
+
+
+
+  - [x] 24.1 Create CategoriesPage component
+
+
     - Display hierarchical category tree
     - Add category creation form
     - Implement category editing
@@ -866,35 +873,49 @@ all transaction data
     - Show category colors
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   
-  - [ ] 24.2 Create CategorySelector component
+  - [x] 24.2 Create CategorySelector component
+
+
     - Build hierarchical category picker
     - Show parent-child relationships
     - Add "Create new category" option
     - _Requirements: 9.2_
   
-  - [ ] 24.3 Create TagInput component
+  - [x] 24.3 Create TagInput component
+
+
     - Build multi-tag input with autocomplete
     - Show existing tags as suggestions
     - Allow creating new tags inline
     - Display selected tags as chips
     - _Requirements: 10.1, 10.2, 10.3_
 
-- [ ] 25. Implement file upload and document UI
-  - [ ] 25.1 Create FileUpload component
+- [x] 25. Implement file upload and document UI
+
+
+
+
+  - [x] 25.1 Create FileUpload component
+
+
     - Build drag-and-drop upload area
     - Add file type validation (PDF, JPEG, PNG)
     - Show upload progress
     - Display file preview
     - _Requirements: 5.1, 6.1_
   
-  - [ ] 25.2 Create ImportPage component
+  - [x] 25.2 Create ImportPage component
+
+
     - Integrate FileUpload component
     - Add document type selection (bank statement vs receipt)
     - Show parsing status
     - Display import review interface after parsing
     - _Requirements: 5.1, 6.1, 7.1_
   
-  - [ ] 25.3 Create document viewer
+  - [x] 25.3 Create document viewer
+
+
     - Add modal to view linked documents
     - Support PDF and image display
     - Add download button

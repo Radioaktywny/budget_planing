@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import DocumentViewer from './DocumentViewer';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -20,6 +21,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
   onSort,
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
 
   // Toggle row expansion for split transactions
   const toggleRow = (transactionId: string) => {
@@ -173,9 +175,16 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                       </button>
                     )}
                     {transaction.documentId && (
-                      <span className="text-blue-500 ml-1" title="Has attachment">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingDocumentId(transaction.documentId!);
+                        }}
+                        className="text-blue-500 hover:text-blue-700 ml-1"
+                        title="View attachment"
+                      >
                         📎
-                      </span>
+                      </button>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -295,6 +304,15 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewingDocumentId && (
+        <DocumentViewer
+          documentId={viewingDocumentId}
+          isOpen={true}
+          onClose={() => setViewingDocumentId(null)}
+        />
+      )}
     </div>
   );
 };

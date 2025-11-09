@@ -5,3 +5,5 @@ export { default as TagInput } from './TagInput';
 export { default as TransactionForm } from './TransactionForm';
 export { default as SplitTransactionForm } from './SplitTransactionForm';
 export { default as TransferForm } from './TransferForm';
+export { default as FileUpload } from './FileUpload';
+export { default as DocumentViewer } from './DocumentViewer';
