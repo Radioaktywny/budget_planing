@@ -419,7 +419,15 @@ function addNetBalanceChart(doc: PDFKit.PDFDocument, trend: NetBalancePoint[]): 
   doc.rect(chartX, chartY, chartWidth, chartHeight).stroke();
 
   // Find min and max values for scaling
-  const values = trend.map((p) => p.cumulativeBalance);
+  const values = trend.map((p) => p.balance).filter(v => !isNaN(v) && isFinite(v));
+  
+  // Handle empty or invalid data
+  if (values.length === 0) {
+    doc.fontSize(10).fillColor('#666666').text('No data available for this period', chartX, chartY + 90);
+    doc.moveDown(15);
+    return;
+  }
+  
   const minValue = Math.min(...values, 0);
   const maxValue = Math.max(...values, 0);
   const range = maxValue - minValue || 1;
@@ -451,8 +459,13 @@ function addNetBalanceChart(doc: PDFKit.PDFDocument, trend: NetBalancePoint[]): 
 
     trend.forEach((point, index) => {
       const x = chartX + index * pointSpacing;
-      const normalizedValue = (point.cumulativeBalance - minValue) / range;
+      const normalizedValue = (point.balance - minValue) / range;
       const y = chartY + chartHeight - normalizedValue * chartHeight;
+
+      // Skip invalid points
+      if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
+        return;
+      }
 
       if (index === 0) {
         doc.moveTo(x, y);
@@ -466,8 +479,13 @@ function addNetBalanceChart(doc: PDFKit.PDFDocument, trend: NetBalancePoint[]): 
     // Draw points
     trend.forEach((point, index) => {
       const x = chartX + index * pointSpacing;
-      const normalizedValue = (point.cumulativeBalance - minValue) / range;
+      const normalizedValue = (point.balance - minValue) / range;
       const y = chartY + chartHeight - normalizedValue * chartHeight;
+
+      // Skip invalid points
+      if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
+        return;
+      }
 
       doc.circle(x, y, 3).fillAndStroke('#2196F3', '#2196F3');
     });
@@ -479,7 +497,9 @@ function addNetBalanceChart(doc: PDFKit.PDFDocument, trend: NetBalancePoint[]): 
   trend.forEach((point, index) => {
     const x = chartX + index * labelSpacing + labelSpacing / 2;
     const y = chartY + chartHeight + 10;
-    doc.text(point.month, x - 20, y, { width: 40, align: 'center' });
+    // Format date as MM/DD
+    const dateLabel = new Date(point.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+    doc.text(dateLabel, x - 20, y, { width: 40, align: 'center' });
   });
 
   doc.y = chartY + chartHeight + 40;

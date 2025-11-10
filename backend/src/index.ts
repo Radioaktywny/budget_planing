@@ -5,6 +5,7 @@ import accountRoutes from './routes/accountRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import documentRoutes from './routes/documentRoutes';
+import tagRoutes from './routes/tagRoutes';
 import aiRoutes from './routes/aiRoutes';
 import importRoutes from './routes/importRoutes';
 import reportRoutes from './routes/reportRoutes';
@@ -47,6 +48,9 @@ app.use('/api/transactions', transactionRoutes);
 
 // Category routes
 app.use('/api/categories', categoryRoutes);
+
+// Tag routes
+app.use('/api/tags', tagRoutes);
 
 // Document routes
 app.use('/api/documents', documentRoutes);

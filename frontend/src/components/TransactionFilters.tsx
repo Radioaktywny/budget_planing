@@ -33,6 +33,11 @@ const TransactionFiltersComponent: React.FC<TransactionFiltersProps> = ({
           categoryService.getAll(),
           tagService.getAll(),
         ]);
+        console.log('📊 Loaded filter options:', {
+          accounts: accountsData.length,
+          categories: categoriesData.length,
+          tags: tagsData.length
+        });
         setAccounts(accountsData);
         setCategories(categoriesData);
         setTags(tagsData);
