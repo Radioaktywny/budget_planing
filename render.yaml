@@ -5,7 +5,7 @@ services:
     runtime: node
     region: frankfurt
     plan: free
-    buildCommand: cd backend && bash scripts/prepare-render-deploy.sh && npm install && npx prisma generate && npx prisma db push --skip-generate --accept-data-loss
+    buildCommand: cd backend && bash scripts/prepare-render-deploy.sh && npm install && npx prisma generate && npm run build && npx prisma db push --skip-generate
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
