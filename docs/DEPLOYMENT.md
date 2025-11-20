@@ -134,9 +134,11 @@ gh repo create home-budget-manager --public --source=. --remote=origin --push
    - Wybierz swoje repo
    - **Settings:**
      - Root Directory: `backend`
-     - Build Command: `npm install && npx prisma generate && npx prisma migrate deploy`
+     - Build Command: `npm install && npx prisma generate && npx prisma db push`
      - Start Command: `npm start`
      - Watch Paths: `backend/**`
+     
+     **Uwaga:** Używamy `db push` zamiast `migrate deploy` ponieważ lokalne migracje są dla SQLite, a produkcja używa PostgreSQL.
 
    - **Environment Variables:**
      ```
@@ -445,13 +447,37 @@ DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
 
 ### Migracje
 
+**WAŻNE:** Jeśli dostajesz błąd `type "datetime" does not exist` podczas deployment na PostgreSQL, to znaczy że masz stare migracje wygenerowane dla SQLite.
+
+**Rozwiązanie dla pierwszego deployment:**
+
 ```bash
-# Uruchom migracje w produkcji
+# Zamiast migrate deploy, użyj db push dla pierwszego deployment
+npx prisma db push
+
+# To utworzy tabele bezpośrednio ze schema.prisma bez używania plików migracji
+```
+
+**Dla kolejnych deploymentów:**
+
+```bash
+# Normalnie używaj migrate deploy
 npx prisma migrate deploy
 
 # Seed danych (opcjonalnie)
 npx prisma db seed
 ```
+
+**Jeśli chcesz używać migracji od początku:**
+
+1. Usuń folder `prisma/migrations`
+2. Wygeneruj nowe migracje dla PostgreSQL:
+   ```bash
+   # Lokalnie z PostgreSQL DATABASE_URL
+   npx prisma migrate dev --name init
+   ```
+3. Commituj nowe migracje do repo
+4. Deploy z `npx prisma migrate deploy`
 
 ---
 

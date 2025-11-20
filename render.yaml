@@ -13,9 +13,11 @@ services:
       - key: PORT
         value: 3001
       - key: DATABASE_URL
-        value: postgresql://budget_user:5ujn337hTvHtLMOKc46MFtdZSgeo9fGD@dpg-d4foohn5r7bs73csifkg-a/budget_manager_8zb2
+        fromDatabase:
+          name: budget-db
+          property: connectionString
       - key: JWT_SECRET
-        value: 28qgt4jZEKFEYcWNFDxTw5YGio7oS19j36h8Vlase4c=
+        generateValue: true
       - key: ALLOWED_ORIGINS
         value: https://budget-planing.vercel.app
       - key: AI_SERVICE_URL
@@ -34,3 +36,11 @@ services:
         value: 8001
       - key: LOG_LEVEL
         value: WARNING
+      - key: GEMINI_API_KEY
+        sync: false  # Set this manually in Render dashboard
+
+databases:
+  - name: budget-db
+    databaseName: budget_manager
+    region: frankfurt
+    plan: free
