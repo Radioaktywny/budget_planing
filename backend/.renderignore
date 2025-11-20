@@ -1,0 +1,5 @@
+# Ignore SQLite migration files when deploying to PostgreSQL
+prisma/migrations/
+
+# These migrations were generated for SQLite and won't work with PostgreSQL
+# We use "prisma db push" instead which applies the schema directly
