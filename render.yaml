@@ -1,0 +1,36 @@
+services:
+  # Backend API
+  - type: web
+    name: budget-backend
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd backend && npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        value: postgresql://budget_user:5ujn337hTvHtLMOKc46MFtdZSgeo9fGD@dpg-d4foohn5r7bs73csifkg-a/budget_manager_8zb2
+      - key: JWT_SECRET
+        value: 28qgt4jZEKFEYcWNFDxTw5YGio7oS19j36h8Vlase4c=
+      - key: ALLOWED_ORIGINS
+        value: https://budget-planing.vercel.app
+      - key: AI_SERVICE_URL
+        value: https://budget-ai.onrender.com
+
+  # AI Service
+  - type: web
+    name: budget-ai
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: cd ai-service && pip install -r requirements.txt
+    startCommand: cd ai-service && python main.py
+    envVars:
+      - key: PORT
+        value: 8001
+      - key: LOG_LEVEL
+        value: WARNING
