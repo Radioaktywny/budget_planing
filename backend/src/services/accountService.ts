@@ -12,14 +12,22 @@ export const CreateAccountSchema = z.object({
   type: AccountTypeSchema,
   userId: z.string().uuid(),
   initialBalance: z.number().optional(),
-  initialBalanceDate: z.string().datetime().optional(),
+  initialBalanceDate: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]).optional(),
 });
 
 export const UpdateAccountSchema = z.object({
   name: z.string().min(1, 'Account name is required').optional(),
   type: AccountTypeSchema.optional(),
   initialBalance: z.number().optional(),
-  initialBalanceDate: z.string().datetime().optional(),
+  initialBalanceDate: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Accept YYYY-MM-DD format
+    z.date()
+  ]).optional(),
 });
 
 export type CreateAccountInput = z.infer<typeof CreateAccountSchema>;

@@ -8,6 +8,7 @@ import {
   clearFailedLogins,
   getLockoutTimeRemaining,
 } from '../middleware/security';
+import { createStarterData } from './starterDataService';
 
 const prisma = new PrismaClient();
 
@@ -157,6 +158,12 @@ export async function registerUser(
     data: {
       refreshToken: actualTokens.refreshToken,
     },
+  });
+  
+  // Create starter data (categories and tags) for new user
+  // This runs asynchronously and won't block registration if it fails
+  createStarterData(user.id).catch(error => {
+    console.error('Failed to create starter data for user:', error);
   });
   
   // Return user without password
