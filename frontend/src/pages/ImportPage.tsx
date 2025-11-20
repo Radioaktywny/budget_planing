@@ -168,7 +168,7 @@ const ImportPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-[1920px] mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Import Documents</h1>
         <a

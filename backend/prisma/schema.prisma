@@ -15,10 +15,17 @@ datasource db {
 // Valid TransactionType values: INCOME, EXPENSE, TRANSFER
 
 model User {
-  id        String   @id @default(uuid())
-  email     String?  @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id                 String    @id @default(uuid())
+  email              String?   @unique
+  name               String?
+  password           String?
+  emailVerified      Boolean   @default(false)
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  refreshToken       String?
+  refreshTokenExpiry DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
   
   accounts     Account[]
   transactions Transaction[]

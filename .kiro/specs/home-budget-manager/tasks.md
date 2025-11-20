@@ -134,7 +134,7 @@
   
 
 
-  - [ ] 5.2 Create transfer API endpoint
+  - [x] 5.2 Create transfer API endpoint
     - Implement POST /api/transactions/transfer endpoint
     - Add transfer display logic to transaction list endpoint
     - _Requirements: 3.1, 3.3, 3.4_
@@ -238,7 +238,7 @@
     - Test error responses
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [-] 8. Implement tag management
+- [x] 8. Implement tag management
 
 
 
@@ -259,7 +259,7 @@
     - Update transaction endpoints to handle tag associations
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
   
-  - [ ] 8.3 Write unit tests for tag service
+  - [x] 8.3 Write unit tests for tag service
 
     - Test tag creation and deletion
     - Test tag-transaction associations
@@ -1083,3 +1083,177 @@ all transaction data
   - Document database migration process
   - Add JSON/YAML import schema documentation
   - _Requirements: 19.5_
+
+- [x] 35. Implement user authentication backend
+
+
+
+
+
+  - [x] 35.1 Update database schema for authentication
+
+
+    - Add password field to User model in Prisma schema
+    - Add emailVerified, resetToken, resetTokenExpiry fields
+    - Run database migration
+    - _Requirements: 19.1, 19.2, 19.3, 22.1_
+  
+  - [x] 35.2 Create authentication service
+
+
+    - Install bcrypt and jsonwebtoken dependencies
+    - Implement user registration with password hashing
+    - Implement login with credential verification
+    - Implement JWT token generation (access and refresh tokens)
+    - Implement token verification function
+    - Add password reset token generation
+    - _Requirements: 19.1, 19.2, 19.3, 20.1, 20.4, 22.1_
+  
+  - [x] 35.3 Implement authentication middleware
+
+
+    - Replace placeholder requireAuth with JWT verification
+    - Extract userId from token and attach to request
+    - Handle token expiration and invalid tokens
+    - Return 401 for unauthorized requests
+    - _Requirements: 20.1, 20.2, 20.3, 21.1, 21.2, 21.3_
+  
+  - [x] 35.4 Create authentication routes and controller
+
+
+    - Implement POST /api/auth/register endpoint
+    - Implement POST /api/auth/login endpoint
+    - Implement POST /api/auth/refresh endpoint for token refresh
+    - Implement POST /api/auth/logout endpoint
+    - Implement POST /api/auth/forgot-password endpoint
+    - Implement POST /api/auth/reset-password endpoint
+    - Add input validation for all endpoints
+    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 20.5, 20.6, 20.7, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 22.7_
+  
+  - [x] 35.5 Update main application to use authentication
+
+
+    - Add authentication routes to Express app
+    - Replace userContextMiddleware with requireAuth for protected routes
+    - Keep auth routes public (no authentication required)
+    - Add JWT_SECRET to environment variables
+    - _Requirements: 19.1, 20.1, 21.1_
+  
+  - [x] 35.6 Write unit tests for authentication service
+
+
+
+
+
+
+    - Test user registration with valid and invalid data
+    - Test password hashing
+    - Test login with correct and incorrect credentials
+    - Test JWT token generation and verification
+    - Test token expiration handling
+    - Test password reset token generation
+    - _Requirements: 19.1, 19.2, 19.3, 20.1, 22.1_
+  
+
+
+  - [x] 35.7 Write integration tests for authentication API
+
+
+
+
+
+    - Test registration endpoint
+    - Test login endpoint
+    - Test token refresh endpoint
+    - Test protected routes with and without valid tokens
+    - Test password reset flow
+    - Test duplicate email registration
+    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 20.1, 20.2, 20.3, 22.1_
+
+- [ ] 36. Implement user authentication frontend
+
+  - [ ] 36.1 Create authentication context and hooks
+    - Create AuthContext with user state management
+    - Implement login, register, and logout functions
+    - Store JWT tokens in localStorage
+    - Load user on app initialization
+    - Provide useAuth hook for components
+    - _Requirements: 19.1, 19.2, 19.3, 19.6, 19.7, 19.8, 20.5_
+  
+  - [ ] 36.2 Update API service for authentication
+    - Add Authorization header with JWT token to all requests
+    - Implement token refresh interceptor for 401 responses
+    - Handle token expiration and automatic refresh
+    - Redirect to login on authentication failure
+    - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.7_
+  
+  - [ ] 36.3 Create authentication pages
+    - Create LoginPage with email and password form
+    - Create RegisterPage with email, password, and name form
+    - Add form validation for email format and password strength
+    - Display error messages for failed authentication
+    - Redirect to dashboard after successful login/register
+    - _Requirements: 19.1, 19.2, 19.6, 19.7_
+  
+  - [ ] 36.4 Create password management pages
+    - Create ForgotPasswordPage with email input
+    - Create ResetPasswordPage with new password form
+    - Add password strength indicator
+    - Display success/error messages
+    - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 22.7_
+  
+  - [ ] 36.5 Implement protected routes
+    - Create ProtectedRoute component
+    - Wrap all application routes with authentication check
+    - Redirect unauthenticated users to login page
+    - Allow public access to login and register pages
+    - _Requirements: 19.1, 20.1, 20.5, 21.1_
+  
+  - [ ] 36.6 Add user profile and logout functionality
+    - Add user menu in navigation with logout button
+    - Display current user name/email
+    - Implement logout that clears tokens and redirects to login
+    - Add account settings page for password change
+    - _Requirements: 19.8, 19.9, 20.5, 22.7_
+  
+  - [ ]* 36.7 Write tests for authentication components
+    - Test AuthContext provider and hooks
+    - Test LoginPage form submission and validation
+    - Test RegisterPage form submission and validation
+    - Test ProtectedRoute redirect behavior
+    - Test logout functionality
+    - _Requirements: 19.1, 19.2, 19.3, 19.6, 19.7, 19.8, 20.5_
+
+- [ ] 37. Implement data isolation and security
+
+  - [ ] 37.1 Verify user-specific data filtering
+    - Audit all database queries to ensure userId filtering
+    - Test that users cannot access other users' data
+    - Verify ownership checks on update/delete operations
+    - Test API endpoints with different user tokens
+    - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5, 21.6, 21.7_
+  
+  - [ ] 37.2 Add security enhancements
+    - Implement rate limiting on authentication endpoints
+    - Add CORS configuration for production
+    - Set secure HTTP headers (helmet middleware)
+    - Add input sanitization for all user inputs
+    - Implement account lockout after failed login attempts
+    - _Requirements: 20.1, 21.1, 21.7_
+  
+  - [ ] 37.3 Add environment configuration
+    - Document all required environment variables
+    - Add JWT_SECRET with strong random value
+    - Configure token expiration times
+    - Set up email service configuration for password reset
+    - Add production vs development environment handling
+    - _Requirements: 19.1, 20.1, 20.4, 22.1_
+  
+  - [ ]* 37.4 Security testing and audit
+    - Test authentication bypass attempts
+    - Test SQL injection prevention
+    - Test XSS prevention
+    - Test CSRF protection
+    - Verify password hashing strength
+    - Test token expiration and refresh
+    - _Requirements: 20.1, 20.2, 20.3, 21.1, 21.2, 21.3, 21.4, 21.7_

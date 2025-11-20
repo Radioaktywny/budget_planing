@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Home Budget Manager is a web-based application designed to help users track and manage their personal finances across multiple accounts. The system enables manual transaction entry, automated data import from bank statements and receipts using AI/ML, comprehensive categorization, and visual reporting. The initial version will be single-user focused with architecture designed to easily accommodate multi-user authentication in the future.
+The Home Budget Manager is a web-based application designed to help users track and manage their personal finances across multiple accounts. The system enables manual transaction entry, automated data import from bank statements and receipts using Google Gemini AI, comprehensive categorization, and visual reporting. The application supports multi-user authentication with secure user registration, login, and data isolation to ensure each user's financial data remains private and secure.
 
 ## Glossary
 
@@ -17,6 +17,10 @@ The Home Budget Manager is a web-based application designed to help users track 
 - **Transfer**: A movement of money between the User's own accounts
 - **Dashboard**: The main interface screen showing budget summary and key metrics
 - **Document Repository**: The storage system for uploaded files (receipts, statements)
+- **Gemini AI**: Google's generative AI service used for intelligent document parsing
+- **Authentication**: The process of verifying user identity through credentials
+- **JWT Token**: JSON Web Token used for maintaining authenticated user sessions
+- **Data Isolation**: Ensuring each user can only access their own financial data
 
 ## Requirements
 
@@ -68,17 +72,21 @@ The Home Budget Manager is a web-based application designed to help users track 
 4. THE System SHALL preserve the link to original documents when editing imported transactions
 5. THE System SHALL save transaction edit history with timestamp
 
-### Requirement 5: Bank Statement PDF Parsing
+### Requirement 5: Bank Statement PDF Parsing with Gemini AI
 
-**User Story:** As a User, I want to upload bank statement PDFs and have transactions automatically extracted, so that I can save time on manual data entry.
+**User Story:** As a User, I want to upload bank statement PDFs and have transactions automatically extracted using AI, so that I can save time on manual data entry with high accuracy.
 
 #### Acceptance Criteria
 
 1. THE System SHALL accept PDF file uploads for bank statements
-2. WHEN a PDF is uploaded, THE System SHALL use AI/ML to extract transaction data including date, amount, description, and payee
-3. THE System SHALL parse multiple transactions from a single statement document
-4. THE System SHALL store the uploaded PDF in the Document Repository with a unique identifier
-5. THE System SHALL link each extracted transaction to the source PDF document
+2. WHEN a PDF is uploaded, THE System SHALL use Google Gemini AI to extract transaction data including date, amount, description, and payee
+3. THE System SHALL correctly parse Polish and English date formats (DD.MM.YYYY and MM/DD/YYYY)
+4. THE System SHALL correctly parse Polish amount formats with comma as decimal separator (e.g., "149,06 zł" as 149.06)
+5. THE System SHALL parse multiple transactions from a single statement document
+6. THE System SHALL store the uploaded PDF in the Document Repository with a unique identifier
+7. THE System SHALL link each extracted transaction to the source PDF document
+8. IF Gemini AI is unavailable, THE System SHALL fallback to regex-based parsing automatically
+9. THE System SHALL suggest categories for extracted transactions based on description context
 
 ### Requirement 6: Receipt Photo Parsing
 
@@ -236,14 +244,60 @@ The Home Budget Manager is a web-based application designed to help users track 
 4. THE System SHALL display split transactions with expandable child items in the transaction list
 5. WHEN generating category reports, THE System SHALL use child transaction categories and exclude the parent from calculations
 
-### Requirement 19: Future Authentication Readiness
+### Requirement 19: User Registration and Authentication
 
-**User Story:** As a User, I want the system architecture to support adding user authentication later, so that multiple people can use the application securely.
+**User Story:** As a new User, I want to create an account with email and password, so that I can securely access my personal budget data.
 
 #### Acceptance Criteria
 
-1. THE System SHALL implement a data model that associates all accounts and transactions with a user identifier
-2. THE System SHALL use a modular authentication layer that can be activated without major refactoring
-3. THE System SHALL separate user-specific data from application configuration
-4. THE System SHALL implement API endpoints with user context parameters for future authentication integration
-5. THE System SHALL document the authentication integration points in technical documentation
+1. THE System SHALL provide a registration form accepting email, password, and optional name
+2. WHEN a User submits registration, THE System SHALL validate email format and password strength (minimum 8 characters)
+3. THE System SHALL hash passwords using bcrypt before storing in the database
+4. THE System SHALL prevent duplicate registrations with the same email address
+5. WHEN registration is successful, THE System SHALL create a new user record and automatically log the User in
+6. THE System SHALL provide a login form accepting email and password
+7. WHEN a User submits valid credentials, THE System SHALL generate a JWT token with 1-hour expiration
+8. THE System SHALL return the JWT token to the client for subsequent authenticated requests
+9. THE System SHALL provide a logout function that invalidates the current session
+
+### Requirement 20: Secure Session Management
+
+**User Story:** As a User, I want my session to remain active while I use the application, so that I don't have to log in repeatedly.
+
+#### Acceptance Criteria
+
+1. THE System SHALL include the JWT token in all API requests via Authorization header
+2. THE System SHALL validate the JWT token on every protected API endpoint
+3. WHEN a token is expired, THE System SHALL return 401 Unauthorized status
+4. THE System SHALL provide a refresh token mechanism with 7-day expiration
+5. WHEN a User's session expires, THE System SHALL redirect to the login page
+6. THE System SHALL store the current user's ID in the request context for all authenticated endpoints
+7. THE System SHALL automatically refresh tokens before expiration when the User is active
+
+### Requirement 21: Data Isolation and Privacy
+
+**User Story:** As a User, I want my financial data to be completely private, so that other users cannot see my accounts or transactions.
+
+#### Acceptance Criteria
+
+1. THE System SHALL associate all accounts, transactions, categories, and documents with the authenticated user's ID
+2. THE System SHALL filter all database queries to return only data belonging to the authenticated user
+3. THE System SHALL prevent users from accessing or modifying other users' data through API manipulation
+4. THE System SHALL validate user ownership before allowing edit or delete operations
+5. THE System SHALL maintain separate category and tag namespaces for each user
+6. THE System SHALL ensure document uploads are stored with user-specific paths or identifiers
+7. THE System SHALL log unauthorized access attempts for security monitoring
+
+### Requirement 22: Password Management
+
+**User Story:** As a User, I want to reset my password if I forget it, so that I can regain access to my account.
+
+#### Acceptance Criteria
+
+1. THE System SHALL provide a "Forgot Password" link on the login page
+2. WHEN a User requests password reset, THE System SHALL send a reset link to the registered email
+3. THE System SHALL generate a unique, time-limited reset token (valid for 1 hour)
+4. THE System SHALL provide a password reset form accessible via the emailed link
+5. WHEN a User submits a new password, THE System SHALL validate password strength and update the hashed password
+6. THE System SHALL invalidate the reset token after successful password change
+7. THE System SHALL allow users to change their password from account settings when logged in
