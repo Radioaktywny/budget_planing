@@ -13,6 +13,13 @@ export enum TransactionType {
 }
 
 // Models
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -258,6 +265,38 @@ export interface CategorySuggestion {
   categoryId: string;
   categoryName: string;
   confidence: number;
+}
+
+// Authentication types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 // Error response

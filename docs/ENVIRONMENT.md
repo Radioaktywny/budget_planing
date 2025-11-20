@@ -78,6 +78,109 @@ Location: `backend/.env`
   ```
 - **Notes**: Increase for large document processing
 
+### Authentication Configuration
+
+#### `JWT_SECRET`
+- **Description**: Secret key for signing JWT tokens
+- **Required**: Yes
+- **Security**: **CRITICAL - Must be changed in production!**
+- **Generation**: Use `openssl rand -base64 32`
+- **Example**: 
+  ```
+  JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+  ```
+- **Notes**: 
+  - Must be at least 32 characters long
+  - Use different secrets for each environment
+  - Never commit production secrets to version control
+  - Changing this will invalidate all existing tokens
+
+#### `ACCESS_TOKEN_EXPIRY`
+- **Description**: Expiration time for JWT access tokens
+- **Required**: No
+- **Default**: `1h` (1 hour)
+- **Format**: Time string (e.g., `15m`, `1h`, `2h`, `1d`)
+- **Example**: 
+  ```
+  ACCESS_TOKEN_EXPIRY=1h
+  ```
+- **Notes**: Shorter expiry is more secure but requires more frequent refreshes
+
+#### `REFRESH_TOKEN_EXPIRY`
+- **Description**: Expiration time for JWT refresh tokens
+- **Required**: No
+- **Default**: `7d` (7 days)
+- **Format**: Time string (e.g., `1d`, `7d`, `30d`)
+- **Example**: 
+  ```
+  REFRESH_TOKEN_EXPIRY=7d
+  ```
+- **Notes**: Longer expiry provides better UX but less security
+
+### Security Configuration
+
+#### `ALLOWED_ORIGINS`
+- **Description**: Comma-separated list of allowed CORS origins
+- **Required**: No (only for production)
+- **Default**: `http://localhost:3000,http://localhost:5173`
+- **Example**: 
+  ```
+  ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+  ```
+- **Notes**: 
+  - Only enforced when `NODE_ENV=production`
+  - In development, all origins are allowed
+  - Include all frontend URLs that need API access
+
+### Email Service Configuration
+
+Email configuration is required for password reset functionality.
+
+#### `EMAIL_SERVICE`
+- **Description**: Email service provider (e.g., gmail, outlook)
+- **Required**: No (optional for password reset)
+- **Example**: 
+  ```
+  EMAIL_SERVICE=gmail
+  ```
+
+#### `EMAIL_USER`
+- **Description**: Email account username
+- **Required**: If using email service
+- **Example**: 
+  ```
+  EMAIL_USER=your-email@gmail.com
+  ```
+
+#### `EMAIL_PASSWORD`
+- **Description**: Email account password or app-specific password
+- **Required**: If using email service
+- **Security**: **SENSITIVE - Never commit to version control**
+- **Example**: 
+  ```
+  EMAIL_PASSWORD=your-app-specific-password
+  ```
+- **Notes**: For Gmail, use app-specific password with 2FA enabled
+
+#### `EMAIL_FROM`
+- **Description**: Email address for "From" field
+- **Required**: If using email service
+- **Example**: 
+  ```
+  EMAIL_FROM=noreply@yourdomain.com
+  ```
+
+#### Alternative: SMTP Configuration
+
+Instead of `EMAIL_SERVICE`, you can use SMTP:
+
+- `SMTP_HOST`: SMTP server hostname (e.g., `smtp.gmail.com`)
+- `SMTP_PORT`: SMTP port (e.g., `587` for TLS, `465` for SSL)
+- `SMTP_SECURE`: Use SSL (`true` or `false`)
+- `SMTP_USER`: SMTP username
+- `SMTP_PASSWORD`: SMTP password
+- `EMAIL_FROM`: From email address
+
 ### File Upload Configuration
 
 #### `UPLOAD_DIR`
@@ -108,6 +211,7 @@ Location: `backend/.env`
 
 ### Complete Backend .env Example
 
+**Development:**
 ```env
 # Database
 DATABASE_URL="file:./dev.db"
@@ -116,6 +220,11 @@ DATABASE_URL="file:./dev.db"
 PORT=3001
 NODE_ENV=development
 
+# Authentication
+JWT_SECRET=dev-secret-key-change-in-production-a1b2c3d4e5f6g7h8i9j0
+ACCESS_TOKEN_EXPIRY=1h
+REFRESH_TOKEN_EXPIRY=7d
+
 # AI Service
 AI_SERVICE_URL=http://localhost:8001
 AI_SERVICE_TIMEOUT=30000
@@ -123,6 +232,47 @@ AI_SERVICE_TIMEOUT=30000
 # File Upload
 UPLOAD_DIR=./uploads
 MAX_FILE_SIZE=10485760
+
+# Security
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# Email (optional - for password reset)
+# EMAIL_SERVICE=gmail
+# EMAIL_USER=your-email@gmail.com
+# EMAIL_PASSWORD=your-app-specific-password
+# EMAIL_FROM=noreply@localhost
+```
+
+**Production:**
+```env
+# Database
+DATABASE_URL="postgresql://user:password@db-host:5432/budget_db"
+
+# Server
+PORT=3001
+NODE_ENV=production
+
+# Authentication - GENERATE NEW SECRET!
+JWT_SECRET=<use-openssl-rand-base64-32>
+ACCESS_TOKEN_EXPIRY=1h
+REFRESH_TOKEN_EXPIRY=7d
+
+# AI Service
+AI_SERVICE_URL=https://ai-service.yourdomain.com
+AI_SERVICE_TIMEOUT=30000
+
+# File Upload
+UPLOAD_DIR=/var/app/uploads
+MAX_FILE_SIZE=10485760
+
+# Security
+ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# Email
+EMAIL_SERVICE=gmail
+EMAIL_USER=noreply@yourdomain.com
+EMAIL_PASSWORD=<app-specific-password>
+EMAIL_FROM=noreply@yourdomain.com
 ```
 
 ---

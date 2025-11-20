@@ -33,11 +33,14 @@ const shouldRetry = (error: AxiosError): boolean => {
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add authentication token here when implemented
-    // const token = localStorage.getItem('authToken');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    // Add authentication token
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      if (!config.headers) {
+        config.headers = {} as any;
+      }
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     
     // Add retry metadata
     if (!config.headers) {
@@ -52,13 +55,104 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor with retry logic
+// Track if we're currently refreshing to avoid multiple refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
+// Response interceptor with retry logic and token refresh
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   async (error: AxiosError<ApiError>) => {
     const config = error.config as any;
+    
+    // Handle 401 Unauthorized - try to refresh token
+    if (error.response?.status === 401 && config && !config._retry) {
+      // Don't retry auth endpoints
+      if (config.url?.includes('/auth/')) {
+        const apiError: ApiError = {
+          code: 'UNAUTHORIZED',
+          message: 'Invalid credentials or session expired',
+        };
+        return Promise.reject(apiError);
+      }
+
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => {
+            return apiClient.request(config);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      config._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // Call refresh endpoint
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        const { accessToken, refreshToken: newRefreshToken, user } = response.data;
+
+        // Update stored tokens
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        // Update the failed request with new token
+        config.headers.Authorization = `Bearer ${accessToken}`;
+
+        processQueue(null);
+        isRefreshing = false;
+
+        // Retry the original request
+        return apiClient.request(config);
+      } catch (refreshError) {
+        processQueue(refreshError);
+        isRefreshing = false;
+
+        // Clear tokens and redirect to login
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+
+        // Redirect to login page
+        window.location.href = '/login';
+
+        const apiError: ApiError = {
+          code: 'SESSION_EXPIRED',
+          message: 'Your session has expired. Please log in again.',
+        };
+        return Promise.reject(apiError);
+      }
+    }
     
     // Skip retries for document uploads (they take a long time with AI processing)
     const isDocumentUpload = config?.url?.includes('/documents/upload') || 

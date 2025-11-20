@@ -2,6 +2,12 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import {
+  isAccountLocked,
+  recordFailedLogin,
+  clearFailedLogins,
+  getLockoutTimeRemaining,
+} from '../middleware/security';
 
 const prisma = new PrismaClient();
 
@@ -169,12 +175,21 @@ export async function registerUser(
  * @returns User (without password) and tokens
  */
 export async function loginUser(email: string, password: string) {
+  // Check if account is locked
+  if (isAccountLocked(email)) {
+    const remainingMinutes = getLockoutTimeRemaining(email);
+    throw new Error(
+      `Account is temporarily locked due to too many failed login attempts. Please try again in ${remainingMinutes} minutes.`
+    );
+  }
+
   // Find user by email
   const user = await prisma.user.findUnique({
     where: { email },
   });
   
   if (!user || !user.password) {
+    recordFailedLogin(email);
     throw new Error('Invalid email or password');
   }
   
@@ -182,8 +197,12 @@ export async function loginUser(email: string, password: string) {
   const isPasswordValid = await comparePassword(password, user.password);
   
   if (!isPasswordValid) {
+    recordFailedLogin(email);
     throw new Error('Invalid email or password');
   }
+
+  // Clear failed login attempts on successful login
+  clearFailedLogins(email);
   
   // Generate tokens
   const tokens = generateTokens(user.id, user.email!);

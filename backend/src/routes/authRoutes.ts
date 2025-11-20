@@ -10,6 +10,10 @@ import {
   getCurrentUser,
 } from '../controllers/authController';
 import { requireAuth } from '../middleware/auth';
+import {
+  authRateLimiter,
+  passwordResetRateLimiter,
+} from '../middleware/security';
 
 const router = Router();
 
@@ -17,20 +21,20 @@ const router = Router();
  * Public routes (no authentication required)
  */
 
-// Register a new user
-router.post('/register', register);
+// Register a new user (rate limited)
+router.post('/register', authRateLimiter, register);
 
-// Login with email and password
-router.post('/login', login);
+// Login with email and password (rate limited)
+router.post('/login', authRateLimiter, login);
 
 // Refresh access token using refresh token
 router.post('/refresh', refresh);
 
-// Initiate password reset
-router.post('/forgot-password', forgotPassword);
+// Initiate password reset (rate limited)
+router.post('/forgot-password', passwordResetRateLimiter, forgotPassword);
 
-// Reset password using reset token
-router.post('/reset-password', resetPasswordHandler);
+// Reset password using reset token (rate limited)
+router.post('/reset-password', passwordResetRateLimiter, resetPasswordHandler);
 
 /**
  * Protected routes (authentication required)

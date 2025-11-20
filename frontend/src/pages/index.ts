@@ -5,3 +5,8 @@ export { default as CategoriesPage } from './CategoriesPage';
 export { default as ReportsPage } from './ReportsPage';
 export { default as ImportPage } from './ImportPage';
 export { default as ImportDataPage } from './ImportDataPage';
+export { default as LoginPage } from './LoginPage';
+export { default as RegisterPage } from './RegisterPage';
+export { default as ForgotPasswordPage } from './ForgotPasswordPage';
+export { default as ResetPasswordPage } from './ResetPasswordPage';
+export { default as SettingsPage } from './SettingsPage';
