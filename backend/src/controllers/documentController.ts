@@ -266,10 +266,24 @@ export const documentController = {
       // For Receipt: return transaction and items
       if ('transactions' in result) {
         // PDF result
+        console.log('📄 PDF PARSING RESULT:');
+        console.log('Number of transactions from AI:', result.transactions.length);
+        
         const pendingTransactions = await parsingService.createPendingTransactions(
           documentId,
           result.transactions
         );
+
+        console.log('📋 PENDING TRANSACTIONS CREATED:');
+        pendingTransactions.forEach((t: any, i: number) => {
+          console.log(`Pending Transaction ${i + 1}:`, {
+            amount: t.amount,
+            type: t.type,
+            description: t.description?.substring(0, 50) + '...',
+            category: t.category,
+            pending: t.pending
+          });
+        });
 
         res.json({
           success: true,

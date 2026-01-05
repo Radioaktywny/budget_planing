@@ -10,7 +10,7 @@ export interface ParsedTransaction {
   date: string;
   amount: number;
   description: string;
-  type: 'INCOME' | 'EXPENSE'; // Uppercase to match backend enum
+  type: 'income' | 'expense' | 'INCOME' | 'EXPENSE'; // Allow both lowercase (from AI) and uppercase (backend enum)
   category?: string;
   account?: string;
   confidence?: number;
@@ -81,11 +81,24 @@ export const parsingService = {
       console.log(`✅ Received response from AI service`);
 
       if (response.data.success) {
-        // Convert transaction types to uppercase to match backend enum
+        // Keep transaction types as-is from AI service (lowercase)
+        // The import service will handle proper type conversion
         const transactions = (response.data.transactions || []).map((t: any) => ({
           ...t,
-          type: t.type.toUpperCase() as 'INCOME' | 'EXPENSE'
+          // Keep original type from AI service for proper processing
+          type: t.type
         }));
+        
+        console.log('🤖 AI SERVICE RESPONSE - PDF Parsing:');
+        console.log('Number of transactions:', transactions.length);
+        transactions.forEach((t: any, i: number) => {
+          console.log(`AI Transaction ${i + 1}:`, {
+            amount: t.amount,
+            type: t.type,
+            description: t.description?.substring(0, 50) + '...',
+            category: t.category
+          });
+        });
         
         return {
           success: true,
@@ -132,10 +145,11 @@ export const parsingService = {
       );
 
       if (response.data.success) {
-        // Convert transaction type to uppercase if present
+        // Keep transaction type as-is from AI service (lowercase)
+        // The import service will handle proper type conversion
         const transaction = response.data.transaction ? {
           ...response.data.transaction,
-          type: response.data.transaction.type.toUpperCase() as 'INCOME' | 'EXPENSE'
+          type: response.data.transaction.type
         } : undefined;
         
         return {

@@ -117,8 +117,9 @@ Frontend runs on http://localhost:3000
 **Terminal 3 - AI Service:**
 ```bash
 cd ai-service
-# Activate venv first (see above)
+venv\Scripts\activate
 python main.py
+
 # Or use: start.bat (Windows) / ./start.sh (macOS/Linux)
 ```
 AI Service runs on http://localhost:8001

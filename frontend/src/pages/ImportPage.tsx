@@ -68,7 +68,7 @@ const ImportPage: React.FC = () => {
         id: `parsed-${index}`,
         date: t.date,
         amount: t.amount,
-        type: TransactionType.EXPENSE, // Default to expense, user can change
+        type: t.type ? (t.type.toUpperCase() as TransactionType) : TransactionType.EXPENSE, // Use AI-detected type
         description: t.description,
         category: t.category,
         categoryId: undefined,

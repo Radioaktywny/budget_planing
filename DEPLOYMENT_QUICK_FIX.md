@@ -19,6 +19,14 @@ The `20251108183934_migration` migration started at 2025-11-20 21:58:33.100177 U
 
 Your local development uses **SQLite** which has a `DATETIME` type, but your production deployment uses **PostgreSQL** which uses `TIMESTAMP`. The migration files were generated for SQLite and don't work with PostgreSQL.
 
+## ⚠️ IMPORTANT: Render Dashboard vs render.yaml
+
+**If you've manually changed build/start commands in Render Dashboard, those settings override the `render.yaml` file!**
+
+You must update commands in the Dashboard, not just in the YAML file.
+
+---
+
 ## 🚨 If You Have Failed Migrations in Production
 
 If you see "migrate found failed migrations", your database has a record of a failed migration. You need to clean this up first:

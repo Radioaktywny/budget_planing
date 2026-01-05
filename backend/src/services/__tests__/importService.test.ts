@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as importService from '../importService';
+import * as transactionService from '../transactionService';
 
 const prisma = new PrismaClient();
 
@@ -498,5 +499,215 @@ describe('ImportService - Get Schema', () => {
     expect(schema).toHaveProperty('description');
     expect(schema).toHaveProperty('format');
     expect(schema).toHaveProperty('examples');
+  });
+});
+
+describe('ImportService - Transaction Type Processing', () => {
+  test('should preserve income type for external transfers', async () => {
+    const importData: importService.ImportData = {
+      version: '1.0',
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 101050.0,
+          type: 'income',
+          description: 'Przelew przychodzący zewnętrzny',
+          category: 'Transfer/External',
+          account: 'Test Checking Account',
+        },
+      ],
+    };
+    
+    const preview = await importService.processImportData(importData, testUserId);
+    
+    expect(preview.transactions).toHaveLength(1);
+    expect(preview.transactions[0].type).toBe('INCOME');
+    expect(preview.transactions[0].category).toBe('Transfer/External');
+    expect(preview.warnings).toHaveLength(0);
+  });
+  
+  test('should convert to transfer for internal transfers', async () => {
+    const importData: importService.ImportData = {
+      version: '1.0',
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 500.0,
+          type: 'transfer',
+          description: 'Internal account transfer',
+          category: 'Transfer/Internal',
+          account: 'Test Checking Account',
+        },
+      ],
+    };
+    
+    const preview = await importService.processImportData(importData, testUserId);
+    
+    expect(preview.transactions).toHaveLength(1);
+    expect(preview.transactions[0].type).toBe('TRANSFER');
+  });
+  
+  test('should preserve expense type regardless of transfer category', async () => {
+    const importData: importService.ImportData = {
+      version: '1.0',
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 126.34,
+          type: 'expense',
+          description: 'Podatek od odsetek',
+          category: 'Tax/Income',
+          account: 'Test Checking Account',
+        },
+      ],
+    };
+    
+    const preview = await importService.processImportData(importData, testUserId);
+    
+    expect(preview.transactions).toHaveLength(1);
+    expect(preview.transactions[0].type).toBe('EXPENSE');
+    expect(preview.transactions[0].category).toBe('Tax/Income');
+  });
+  
+  test('should handle multiple external transfer transactions correctly', async () => {
+    const importData: importService.ImportData = {
+      version: '1.0',
+      transactions: [
+        {
+          date: '2024-11-10',
+          amount: 101050.0,
+          type: 'income',
+          description: 'Przelew przychodzący zewnętrzny Z rachunku: 13 1160 2202 0000 0006 7056 3995',
+          category: 'Transfer/External',
+          account: 'Test Checking Account',
+        },
+        {
+          date: '2024-11-10',
+          amount: 130000.0,
+          type: 'income',
+          description: 'Przelew przychodzący zewnętrzny Z rachunku: 80 2490 0005 0000 4000 5766 5198',
+          category: 'Transfer/External',
+          account: 'Test Checking Account',
+        },
+        {
+          date: '2024-11-30',
+          amount: 664.92,
+          type: 'income',
+          description: 'Odsetki - Kapitalizacja odsetek',
+          category: 'Income/Interest',
+          account: 'Test Checking Account',
+        },
+        {
+          date: '2024-11-30',
+          amount: 126.34,
+          type: 'expense',
+          description: 'Odsetki - Podatek od odsetek',
+          category: 'Tax/Income',
+          account: 'Test Checking Account',
+        },
+      ],
+    };
+    
+    const preview = await importService.processImportData(importData, testUserId);
+    
+    expect(preview.transactions).toHaveLength(4);
+    
+    // First two should be INCOME (external transfers)
+    expect(preview.transactions[0].type).toBe('INCOME');
+    expect(preview.transactions[0].category).toBe('Transfer/External');
+    expect(preview.transactions[1].type).toBe('INCOME');
+    expect(preview.transactions[1].category).toBe('Transfer/External');
+    
+    // Third should be INCOME (interest)
+    expect(preview.transactions[2].type).toBe('INCOME');
+    expect(preview.transactions[2].category).toBe('Income/Interest');
+    
+    // Fourth should be EXPENSE (tax)
+    expect(preview.transactions[3].type).toBe('EXPENSE');
+    expect(preview.transactions[3].category).toBe('Tax/Income');
+    
+    expect(preview.warnings).toHaveLength(0);
+  });
+  
+  test('should convert transfer category without external to TRANSFER type', async () => {
+    const importData: importService.ImportData = {
+      version: '1.0',
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 500.0,
+          type: 'income', // Original type is income
+          description: 'Transfer between accounts',
+          category: 'Transfer', // Contains "transfer" but not "external"
+          account: 'Test Checking Account',
+        },
+      ],
+    };
+    
+    const preview = await importService.processImportData(importData, testUserId);
+    
+    expect(preview.transactions).toHaveLength(1);
+    expect(preview.transactions[0].type).toBe('TRANSFER'); // Should be converted to TRANSFER
+  });
+});
+
+describe('TransactionService - Bulk Transaction Creation with AI Type Processing', () => {
+  test('should preserve income type for external transfers in bulk creation', async () => {
+    // Create a test category
+    const category = await prisma.category.create({
+      data: {
+        name: 'Transfer/External',
+        userId: testUserId,
+      },
+    });
+
+    const bulkData = {
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 101050.0,
+          type: 'INCOME' as const,
+          description: 'Przelew przychodzący zewnętrzny',
+          accountId: testAccountId,
+          categoryId: category.id,
+          userId: testUserId,
+        },
+      ],
+    };
+
+    const result = await transactionService.createBulkTransactions(bulkData, testUserId);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('INCOME'); // Should stay as INCOME
+    expect(result[0].categoryId).toBe(category.id);
+  });
+
+  test('should convert to transfer for internal transfers in bulk creation', async () => {
+    // Create a test category
+    const category = await prisma.category.create({
+      data: {
+        name: 'Transfer/Internal',
+        userId: testUserId,
+      },
+    });
+
+    const bulkData = {
+      transactions: [
+        {
+          date: '2024-01-15',
+          amount: 500.0,
+          type: 'INCOME' as const,
+          description: 'Internal account transfer',
+          accountId: testAccountId,
+          categoryId: category.id,
+          userId: testUserId,
+        },
+      ],
+    };
+
+    const result = await transactionService.createBulkTransactions(bulkData, testUserId);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('TRANSFER'); // Should be converted to TRANSFER
   });
 });

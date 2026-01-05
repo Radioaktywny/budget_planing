@@ -334,8 +334,12 @@ export async function processImportData(
     // Convert type to uppercase enum
     let type = transaction.type.toUpperCase() as 'INCOME' | 'EXPENSE' | 'TRANSFER';
     
-    // Auto-detect transfers based on category name
-    if (transaction.category && transaction.category.toLowerCase().includes('transfer')) {
+    // Auto-detect transfers only if type is not already explicitly set to income/expense
+    // and category suggests it's an internal transfer (not external income)
+    if (transaction.type === 'transfer' || 
+        (transaction.category && 
+         transaction.category.toLowerCase().includes('transfer') && 
+         !transaction.category.toLowerCase().includes('external'))) {
       type = 'TRANSFER';
     }
     

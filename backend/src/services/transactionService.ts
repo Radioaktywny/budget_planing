@@ -758,6 +758,15 @@ export async function createTransaction(
     },
   });
 
+  console.log('💾 TRANSACTION STORED IN DATABASE:');
+  console.log('Stored transaction:', {
+    id: transaction.id,
+    amount: transaction.amount,
+    type: transaction.type,
+    description: transaction.description.substring(0, 50) + '...',
+    categoryName: transaction.category?.name
+  });
+
   // Handle tags if provided
   if (validated.tagIds && validated.tagIds.length > 0) {
     await prisma.transactionTag.createMany({
@@ -1406,13 +1415,38 @@ export async function createBulkTransactions(
     const transactionData = validated.transactions[i];
 
     try {
+      // Apply import service type processing logic for AI-parsed transactions
+      let processedType = transactionData.type;
+      
+      // Check if this transaction came from AI parsing and needs type processing
+      // Apply the same logic as in importService.processImportData
+      if (transactionData.type === 'INCOME' || transactionData.type === 'EXPENSE') {
+        // Get the category name to check for transfer logic
+        let categoryName: string | undefined;
+        if (transactionData.categoryId) {
+          const category = await prisma.category.findUnique({
+            where: { id: transactionData.categoryId },
+            select: { name: true },
+          });
+          categoryName = category?.name;
+        }
+        
+        // Apply transfer detection logic (same as import service)
+        // Only convert to TRANSFER if category contains "transfer" but NOT "external"
+        if (categoryName && 
+            categoryName.toLowerCase().includes('transfer') && 
+            !categoryName.toLowerCase().includes('external')) {
+          processedType = 'TRANSFER';
+        }
+      }
+
       // Check if this is a split transaction
       if (transactionData.split && transactionData.items && transactionData.items.length > 0) {
         // Create split transaction
         const result = await createSplitTransaction({
           date: transactionData.date,
           amount: transactionData.amount,
-          type: transactionData.type,
+          type: processedType,
           description: transactionData.description,
           notes: transactionData.notes,
           accountId: transactionData.accountId,
@@ -1426,7 +1460,7 @@ export async function createBulkTransactions(
         const transaction = await createTransaction({
           date: transactionData.date,
           amount: transactionData.amount,
-          type: transactionData.type,
+          type: processedType,
           description: transactionData.description,
           notes: transactionData.notes,
           accountId: transactionData.accountId,

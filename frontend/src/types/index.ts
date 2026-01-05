@@ -256,6 +256,7 @@ export interface ParsedTransaction {
   date: string;
   amount: number;
   description: string;
+  type?: string; // AI-detected transaction type (income, expense, transfer)
   category?: string;
   account?: string;
   confidence?: number;
